@@ -29,6 +29,10 @@ export const metadata: Metadata = {
   alternates: {
     canonical: siteUrl,
   },
+  other: {
+    "mitgo-verification": "ffdee161-321c-4e2f-8590-6dab0b0dafee",
+    "admitad-verification": "ffdee161-321c-4e2f-8590-6dab0b0dafee",
+  },
 };
 
 export default function RootLayout({
@@ -38,6 +42,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="scroll-smooth">
+      <head>
+        <meta name="mitgo-verification" content="ffdee161-321c-4e2f-8590-6dab0b0dafee" />
+        <meta name="admitad-verification" content="ffdee161-321c-4e2f-8590-6dab0b0dafee" />
+      </head>
       <body className={`${inter.className} min-h-screen flex flex-col bg-[#fafafa] text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900`}>
         <DisclosureBar />
         <Navbar />
