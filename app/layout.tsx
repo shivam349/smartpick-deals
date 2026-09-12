@@ -8,15 +8,17 @@ import { JsonLd, generateWebsiteSchema, generateOrganizationSchema } from "@/com
 
 const inter = Inter({ subsets: ["latin"] });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://smartpick-dealss.vercel.app";
+
 export const metadata: Metadata = {
   title: "SmartPick — Best Deals, Reviews & Comparisons",
   description: "Compare products, discover genuine deals, and find the best tech products with independent research.",
-  metadataBase: new URL(process.env.SITE_URL || "https://smartpick-deals.vercel.app"),
+  metadataBase: new URL(siteUrl),
   openGraph: {
     type: "website",
     title: "SmartPick — Best Deals & Reviews",
     description: "Independent product comparisons, buying guides and live deals.",
-    url: process.env.SITE_URL || "https://smartpick-deals.vercel.app",
+    url: siteUrl,
     siteName: "SmartPick",
   },
   twitter: {
@@ -25,7 +27,7 @@ export const metadata: Metadata = {
     description: "Independent product comparisons, buying guides and live deals.",
   },
   alternates: {
-    canonical: process.env.SITE_URL || "https://smartpick-deals.vercel.app",
+    canonical: siteUrl,
   },
 };
 

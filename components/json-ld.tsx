@@ -13,17 +13,23 @@ export function JsonLd({ data }: JsonLdProps) {
   );
 }
 
+const siteUrl = (
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.SITE_URL ||
+  "https://smartpick-dealss.vercel.app"
+).replace(/\/+$/, "");
+
 export function generateWebsiteSchema() {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "SmartPick",
     "alternateName": "SmartPick Reviews",
-    "url": process.env.SITE_URL || "https://smartpick.reviews",
+    "url": siteUrl,
     "description": "Compare products, discover genuine deals, and find the best tech products with independent research.",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": `${process.env.SITE_URL || "https://smartpick.reviews"}/deals?q={search_term_string}`,
+      "target": `${siteUrl}/deals?q={search_term_string}`,
       "query-input": "required name=search_term_string"
     }
   };
@@ -34,8 +40,8 @@ export function generateOrganizationSchema() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "SmartPick",
-    "url": process.env.SITE_URL || "https://smartpick.reviews",
-    "logo": `${process.env.SITE_URL || "https://smartpick.reviews"}/logo.png`,
+    "url": siteUrl,
+    "logo": `${siteUrl}/logo.png`,
     "sameAs": []
   };
 }
@@ -96,6 +102,8 @@ export function generateArticleSchema(article: {
     "@type": "Article",
     "headline": article.title,
     "description": article.meta_description || "",
+    "mainEntityOfPage": `${siteUrl}/guides/${article.slug}`,
+    "url": `${siteUrl}/guides/${article.slug}`,
     "author": {
       "@type": "Organization",
       "name": "SmartPick Editorial Team"

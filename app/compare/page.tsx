@@ -2,8 +2,29 @@ import React from "react";
 import Link from "next/link";
 import { Swords, ArrowRight, Award } from "lucide-react";
 import { getProducts } from "@/lib/supabase";
+import type { Metadata } from "next";
 
 export const revalidate = 60;
+
+const siteUrl = (
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.SITE_URL ||
+  "https://smartpick-dealss.vercel.app"
+).replace(/\/+$/, "");
+
+export const metadata: Metadata = {
+  title: "Head-to-Head Hardware Comparisons | SmartPick",
+  description: "Direct spec-by-spec product comparisons. Discover tradeoffs, benchmark differences, and our definitive editorial recommendations.",
+  alternates: {
+    canonical: `${siteUrl}/compare`,
+  },
+  openGraph: {
+    title: "Head-to-Head Hardware Comparisons | SmartPick",
+    description: "Direct spec-by-spec product comparisons. Discover tradeoffs, benchmark differences, and our definitive editorial recommendations.",
+    url: `${siteUrl}/compare`,
+    siteName: "SmartPick",
+  },
+};
 
 export default async function CompareIndexPage() {
   const products = await getProducts(12);

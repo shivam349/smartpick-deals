@@ -4,7 +4,7 @@ import { LOCAL_PRODUCTS } from "@/lib/catalog-data";
 import { LOCAL_ARTICLES } from "@/lib/articles-data";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.SITE_URL || "https://smartpick.reviews";
+  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://smartpick-dealss.vercel.app").replace(/\/+$/, "");
 
   // Base routes
   const staticRoutes: MetadataRoute.Sitemap = [

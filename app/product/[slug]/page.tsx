@@ -36,7 +36,12 @@ export async function generateMetadata({
 
   const title = `${item.name} — Specs, Review & Price | SmartPick`;
   const description = `${item.description} Verified pricing, hardware specs, and buying verdict.`;
-  const canonical = `https://smartpick.reviews/product/${item.slug}`;
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    "https://smartpick-dealss.vercel.app"
+  ).replace(/\/+$/, "");
+  const canonical = `${baseUrl}/product/${item.slug}`;
 
   return {
     title,

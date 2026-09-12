@@ -19,3 +19,8 @@ export function calculateDiscount(price: string, oldPrice: string): number {
   if (isNaN(p) || isNaN(op) || op <= p) return 0;
   return Math.round(((op - p) / op) * 100);
 }
+
+export function getSiteUrl(): string {
+  const url = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://smartpick-dealss.vercel.app";
+  return url.replace(/\/+$/, "");
+}

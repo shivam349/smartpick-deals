@@ -8,11 +8,23 @@ import { GuideCard } from "@/components/guide-card";
 
 export const revalidate = 60;
 
+const siteUrl = (
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.SITE_URL ||
+  "https://smartpick-dealss.vercel.app"
+).replace(/\/+$/, "");
+
 export const metadata: Metadata = {
   title: "Comprehensive Buying Guides & Hardware Reviews | SmartPick",
   description: "In-depth editorial research, hardware spec comparisons, and objective buying advice for developers, remote professionals, and creators.",
   alternates: {
-    canonical: "https://smartpick.reviews/guides",
+    canonical: `${siteUrl}/guides`,
+  },
+  openGraph: {
+    title: "Comprehensive Buying Guides & Hardware Reviews | SmartPick",
+    description: "In-depth editorial research, hardware spec comparisons, and objective buying advice for developers, remote professionals, and creators.",
+    url: `${siteUrl}/guides`,
+    siteName: "SmartPick",
   },
 };
 

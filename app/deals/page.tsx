@@ -4,8 +4,29 @@ import { Flame, ArrowLeft, Search, Sparkles } from "lucide-react";
 import { getDeals, getCategories } from "@/lib/supabase";
 import { DealCard } from "@/components/deal-card";
 import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
 
 export const revalidate = 60;
+
+const siteUrl = (
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.SITE_URL ||
+  "https://smartpick-dealss.vercel.app"
+).replace(/\/+$/, "");
+
+export const metadata: Metadata = {
+  title: "Today's Verified Hardware Deals & Price Drops | SmartPick",
+  description: "Browse verified live discounts and hardware deals across developer gear, mechanical keyboards, monitors, and workstation peripherals.",
+  alternates: {
+    canonical: `${siteUrl}/deals`,
+  },
+  openGraph: {
+    title: "Today's Verified Hardware Deals | SmartPick",
+    description: "Browse verified live discounts and hardware deals across developer gear, mechanical keyboards, monitors, and workstation peripherals.",
+    url: `${siteUrl}/deals`,
+    siteName: "SmartPick",
+  },
+};
 
 export default async function DealsPage({
   searchParams,

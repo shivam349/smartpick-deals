@@ -29,7 +29,12 @@ export async function generateMetadata({
 
   const title = `${nameA} vs ${nameB}: Specs, Price & Verdict | SmartPick`;
   const description = `Direct side-by-side hardware comparison of ${nameA} vs ${nameB}. Verified specifications, ergonomics, and editorial winner verdict.`;
-  const canonical = `https://smartpick.reviews/compare/${params.slug}`;
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    "https://smartpick-dealss.vercel.app"
+  ).replace(/\/+$/, "");
+  const canonical = `${baseUrl}/compare/${params.slug}`;
 
   return {
     title,

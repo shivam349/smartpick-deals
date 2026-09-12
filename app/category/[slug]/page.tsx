@@ -19,7 +19,12 @@ export async function generateMetadata({
   const name = category ? category.name : params.slug.replace(/-/g, " ");
   const title = `Best ${name} 2026: Reviews, Deals & Buying Advice | SmartPick`;
   const description = `Compare the best ${name.toLowerCase()} for developers, creators, and professionals. Verified specifications, lab analysis, and genuine price drops.`;
-  const canonical = `https://smartpick.reviews/category/${params.slug}`;
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    "https://smartpick-dealss.vercel.app"
+  ).replace(/\/+$/, "");
+  const canonical = `${baseUrl}/category/${params.slug}`;
 
   return {
     title,
