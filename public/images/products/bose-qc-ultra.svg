@@ -1,0 +1,39 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="400" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#fff7ed"/><stop offset="100%" stopColor="#ffedd5"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" floodColor="#0f172a" floodOpacity="0.08" />
+    </filter>
+  </defs>
+  <!-- Background Card -->
+  <rect width="400" height="300" rx="16" fill="url(#bgGrad)" />
+  <rect x="12" y="12" width="376" height="276" rx="12" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 4" fill="none" opacity="0.6"/>
+  
+  <!-- Category Pill -->
+  <g transform="translate(30, 30)">
+    <rect width="110" height="24" rx="12" fill="#ffffff" opacity="0.9"/>
+    <text x="55" y="16" fill="#475569" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1">
+      HEADPHONES
+    </text>
+  </g>
+
+  <!-- Illustration Elements -->
+  
+      <!-- Charging Case -->
+      <rect x="140" y="120" width="120" height="80" rx="30" fill="#1e293b" stroke="#334155" stroke-width="3"/>
+      <!-- Earbuds -->
+      <ellipse cx="180" cy="100" rx="12" ry="18" fill="#0f172a"/>
+      <ellipse cx="220" cy="100" rx="12" ry="18" fill="#0f172a"/>
+      <circle cx="200" cy="160" r="3" fill="#10b981"/>
+    
+
+  <!-- Title Bottom Strip -->
+  <g transform="translate(30, 246)">
+    <rect width="340" height="30" rx="8" fill="#ffffff" opacity="0.95" filter="url(#cardShadow)"/>
+    <text x="170" y="20" fill="#0f172a" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="800" text-anchor="middle">
+      Bose QuietComfort Ultra
+    </text>
+  </g>
+</svg>

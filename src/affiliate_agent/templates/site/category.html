@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Best {{ category.name }} (2026 Reviews & Buyer Picks) - {{ site_name }}{% endblock %}
+{% block description %}Explore the top-rated {{ category.name }} tested for quality, value, and reliability in 2026. Side-by-side comparisons and live prices.{% endblock %}
+
+{% block content %}
+<div class="container breadcrumb-container">
+    <nav class="breadcrumbs">
+        <a href="{{ root_path }}index.html">Home</a> /
+        <span>Categories</span> /
+        <span class="active">{{ category.name }}</span>
+    </nav>
+</div>
+
+<section class="container category-header-section">
+    <h1 class="page-title">Top Rated {{ category.name }}</h1>
+    <p class="page-subtitle">We evaluated specs, customer feedback, and benchmark performance across {{ category.products|length }} top contenders in this category.</p>
+</section>
+
+<!-- Category Products Grid -->
+<section class="container section-container">
+    <div class="products-grid">
+        {% for prod in category.products %}
+        <div class="product-card">
+            <div class="product-card-top">
+                <span class="product-brand">{{ prod.brand }}</span>
+                <span class="rating-chip">⭐ {{ prod.rating }}/5</span>
+            </div>
+            <h3 class="product-card-title">{{ prod.name }}</h3>
+            <p class="product-card-summary">{{ prod.summary }}</p>
+            
+            <div class="mini-pros-cons">
+                <div class="mini-pro"><strong>✓</strong> {{ prod.pros[0] }}</div>
+                <div class="mini-con"><strong>✗</strong> {{ prod.cons[0] }}</div>
+            </div>
+
+            <div class="product-card-footer">
+                <div class="product-price">{{ prod.price }}</div>
+                <div class="product-actions">
+                    <a href="{{ root_path }}reviews/{{ prod.slug }}-review.html" class="btn btn-secondary">Review</a>
+                    <a href="{{ prod.affiliate_url }}" target="_blank" rel="nofollow sponsored" class="btn btn-primary">Check Price</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Related Category Guides -->
+{% if category.articles %}
+<section class="container section-container">
+    <div class="section-header">
+        <h2 class="section-title">Related Buying Guides & Deep Dives</h2>
+    </div>
+    <div class="articles-grid">
+        {% for art in category.articles %}
+        <article class="article-card">
+            <div class="article-badge">{{ art.type|replace('_', ' ')|title }}</div>
+            <h3 class="article-card-title">
+                <a href="{{ root_path }}reviews/{{ art.slug }}.html">{{ art.title }}</a>
+            </h3>
+            <p class="article-card-desc">{{ art.seo_metadata.meta_description }}</p>
+            <div class="article-meta">
+                <span class="meta-item">⏱️ {{ art.reading_time_mins }} min read</span>
+                <a href="{{ root_path }}reviews/{{ art.slug }}.html" class="read-more-link">Read Full Guide →</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}

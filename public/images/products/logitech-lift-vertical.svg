@@ -1,0 +1,37 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="400" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#f8fafc"/><stop offset="100%" stopColor="#e0e7ff"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" floodColor="#0f172a" floodOpacity="0.08" />
+    </filter>
+  </defs>
+  <!-- Background Card -->
+  <rect width="400" height="300" rx="16" fill="url(#bgGrad)" />
+  <rect x="12" y="12" width="376" height="276" rx="12" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 4" fill="none" opacity="0.6"/>
+  
+  <!-- Category Pill -->
+  <g transform="translate(30, 30)">
+    <rect width="110" height="24" rx="12" fill="#ffffff" opacity="0.9"/>
+    <text x="55" y="16" fill="#475569" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1">
+      MICE
+    </text>
+  </g>
+
+  <!-- Illustration Elements -->
+  
+      <!-- Vertical Ergonomic Wedge -->
+      <path d="M160 215 C130 190, 150 100, 190 85 C230 70, 240 140, 235 210 Z" fill="#475569"/>
+      <rect x="200" y="105" width="8" height="24" rx="4" fill="#f59e0b"/>
+      <path d="M190 85 L220 180" stroke="#64748b" stroke-width="2"/>
+    
+
+  <!-- Title Bottom Strip -->
+  <g transform="translate(30, 246)">
+    <rect width="340" height="30" rx="8" fill="#ffffff" opacity="0.95" filter="url(#cardShadow)"/>
+    <text x="170" y="20" fill="#0f172a" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="800" text-anchor="middle">
+      Logitech Lift Vertical Mouse
+    </text>
+  </g>
+</svg>

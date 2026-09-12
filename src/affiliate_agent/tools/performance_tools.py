@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from typing import Any
 
-from claude_agent_sdk import tool
+from affiliate_agent.core.tools import tool
 
 
 @tool(

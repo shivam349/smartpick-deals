@@ -1,0 +1,56 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="400" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#f8fafc"/><stop offset="100%" stopColor="#e2e8f0"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" floodColor="#0f172a" floodOpacity="0.08" />
+    </filter>
+  </defs>
+  <!-- Background Card -->
+  <rect width="400" height="300" rx="16" fill="url(#bgGrad)" />
+  <rect x="12" y="12" width="376" height="276" rx="12" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 4" fill="none" opacity="0.6"/>
+  
+  <!-- Category Pill -->
+  <g transform="translate(30, 30)">
+    <rect width="110" height="24" rx="12" fill="#ffffff" opacity="0.9"/>
+    <text x="55" y="16" fill="#475569" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1">
+      KEYBOARDS
+    </text>
+  </g>
+
+  <!-- Illustration Elements -->
+  
+      <!-- Keyboard Silhouette -->
+      <rect x="80" y="90" width="240" height="120" rx="10" fill="#1e293b" stroke="#334155" stroke-width="4"/>
+      <!-- Key rows -->
+      <g fill="#475569">
+        <rect x="94" y="104" width="20" height="16" rx="3"/>
+        <rect x="120" y="104" width="20" height="16" rx="3"/>
+        <rect x="146" y="104" width="20" height="16" rx="3"/>
+        <rect x="172" y="104" width="20" height="16" rx="3"/>
+        <rect x="198" y="104" width="20" height="16" rx="3"/>
+        <rect x="224" y="104" width="20" height="16" rx="3"/>
+        <rect x="250" y="104" width="20" height="16" rx="3"/>
+        <rect x="276" y="104" width="30" height="16" rx="3" fill="#ea580c"/>
+      </g>
+      <g fill="#334155">
+        <rect x="94" y="126" width="28" height="16" rx="3"/>
+        <rect x="128" y="126" width="20" height="16" rx="3"/>
+        <rect x="154" y="126" width="20" height="16" rx="3"/>
+        <rect x="180" y="126" width="20" height="16" rx="3"/>
+        <rect x="206" y="126" width="20" height="16" rx="3"/>
+        <rect x="232" y="126" width="20" height="16" rx="3"/>
+        <rect x="258" y="126" width="48" height="16" rx="3"/>
+      </g>
+      <rect x="138" y="172" width="110" height="16" rx="4" fill="#38bdf8"/>
+    
+
+  <!-- Title Bottom Strip -->
+  <g transform="translate(30, 246)">
+    <rect width="340" height="30" rx="8" fill="#ffffff" opacity="0.95" filter="url(#cardShadow)"/>
+    <text x="170" y="20" fill="#0f172a" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="800" text-anchor="middle">
+      Keychron Q1 Pro Mechanical
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container hero-container">
+        <div class="hero-tag">Verified Buying Intelligence</div>
+        <h1 class="hero-title">Find the Best Gear, Tested by Experts.</h1>
+        <p class="hero-subtitle">We research hundreds of products so you don't have to. Real benchmarks, honest pros & cons, and verified daily prices.</p>
+        
+        <div class="hero-stats">
+            <div class="stat-pill"><strong>{{ products|length }}+</strong> Products Tested</div>
+            <div class="stat-pill"><strong>{{ categories|length }}</strong> Major Categories</div>
+            <div class="stat-pill"><strong>100%</strong> Independent Testing</div>
+            <div class="stat-pill"><strong>Daily</strong> Deal Updates</div>
+        </div>
+    </div>
+</section>
+
+<!-- Today's Deal Spotlight -->
+{% if spotlight_product %}
+<section class="container section-container">
+    <div class="spotlight-card">
+        <div class="spotlight-badge">🔥 Deal Spotlight of the Day</div>
+        <div class="spotlight-content">
+            <div class="spotlight-info">
+                <span class="product-category-tag">{{ spotlight_product.category }}</span>
+                <h2 class="spotlight-title">{{ spotlight_product.name }}</h2>
+                <div class="rating-row">
+                    <span class="stars">⭐⭐⭐⭐⭐</span>
+                    <span class="rating-number">{{ spotlight_product.rating }}/5</span>
+                    <span class="rating-count">({{ spotlight_product.rating_count }} verified buyer reviews)</span>
+                </div>
+                <p class="spotlight-summary">{{ spotlight_product.summary }}</p>
+                <div class="pros-preview">
+                    {% for pro in spotlight_product.pros[:2] %}
+                    <div class="pro-item">✓ {{ pro }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="spotlight-cta-box">
+                <div class="price-label">Verified Market Price</div>
+                <div class="spotlight-price">{{ spotlight_product.price }}</div>
+                <a href="{{ spotlight_product.affiliate_url }}" target="_blank" rel="nofollow sponsored" class="btn btn-primary btn-large">
+                    View Live Deal & Availability →
+                </a>
+                <span class="cta-guarantee">Secured through verified merchants via Cuelinks</span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Category Navigation Grid -->
+<section class="container section-container">
+    <div class="section-header">
+        <h2 class="section-title">Explore By Category</h2>
+        <p class="section-subtitle">Jump straight into deep-dive product rankings and comprehensive buying guides.</p>
+    </div>
+    <div class="category-grid">
+        {% for cat in categories %}
+        <a href="categories/{{ cat.slug }}.html" class="category-card">
+            <div class="category-icon">🏷️</div>
+            <div class="category-details">
+                <h3 class="category-name">{{ cat.name }}</h3>
+                <span class="category-count">{{ cat.product_count }} Top Rated Products →</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Top Featured Products -->
+<section class="container section-container" id="featured-products">
+    <div class="section-header">
+        <h2 class="section-title">Top Rated Products</h2>
+        <p class="section-subtitle">Hand-curated, rigorously evaluated top performers across all tested categories.</p>
+    </div>
+    <div class="products-grid">
+        {% for prod in products[:8] %}
+        <div class="product-card">
+            <div class="product-card-top">
+                <span class="product-brand">{{ prod.brand }}</span>
+                <span class="product-category-chip">{{ prod.category }}</span>
+            </div>
+            <h3 class="product-card-title">{{ prod.name }}</h3>
+            <div class="rating-row small">
+                <span class="stars">⭐</span>
+                <span class="rating-number">{{ prod.rating }}/5</span>
+                <span class="rating-count">({{ prod.rating_count }})</span>
+            </div>
+            <p class="product-card-summary">{{ prod.summary }}</p>
+            <div class="feature-tags">
+                {% for feat in prod.features[:2] %}
+                <span class="feature-tag">• {{ feat }}</span>
+                {% endfor %}
+            </div>
+            <div class="product-card-footer">
+                <div class="product-price">{{ prod.price }}</div>
+                <div class="product-actions">
+                    <a href="reviews/{{ prod.slug }}-review.html" class="btn btn-secondary">Full Review</a>
+                    <a href="{{ prod.affiliate_url }}" target="_blank" rel="nofollow sponsored" class="btn btn-primary">Check Price</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Latest In-Depth Articles & Buying Guides -->
+<section class="container section-container" id="buying-guides">
+    <div class="section-header">
+        <h2 class="section-title">Latest Buying Guides & Reviews</h2>
+        <p class="section-subtitle">10–20 comprehensive guides written by research specialists.</p>
+    </div>
+    <div class="articles-grid">
+        {% for art in articles %}
+        <article class="article-card">
+            <div class="article-badge">{{ art.type|replace('_', ' ')|title }}</div>
+            <h3 class="article-card-title">
+                <a href="reviews/{{ art.slug }}.html">{{ art.title }}</a>
+            </h3>
+            <p class="article-card-desc">{{ art.seo_metadata.meta_description }}</p>
+            <div class="article-meta">
+                <span class="meta-item">⏱️ {{ art.reading_time_mins }} min read</span>
+                <span class="meta-item">📂 {{ art.category }}</span>
+                <a href="reviews/{{ art.slug }}.html" class="read-more-link">Read Guide →</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,44 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="400" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#0f172a"/><stop offset="100%" stopColor="#1e1b4b"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" floodColor="#0f172a" floodOpacity="0.08" />
+    </filter>
+  </defs>
+  <!-- Background Card -->
+  <rect width="400" height="300" rx="16" fill="url(#bgGrad)" />
+  <rect x="12" y="12" width="376" height="276" rx="12" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 4" fill="none" opacity="0.6"/>
+  
+  <!-- Category Pill -->
+  <g transform="translate(30, 30)">
+    <rect width="110" height="24" rx="12" fill="#ffffff" opacity="0.9"/>
+    <text x="55" y="16" fill="#475569" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1">
+      MONITORS
+    </text>
+  </g>
+
+  <!-- Illustration Elements -->
+  
+      <!-- Monitor Stand -->
+      <path d="M190 200 L210 200 L205 160 L195 160 Z" fill="#94a3b8"/>
+      <rect x="160" y="200" width="80" height="8" rx="4" fill="#64748b"/>
+      <!-- Display Panel -->
+      <rect x="70" y="70" width="260" height="150" rx="6" fill="#020617" stroke="#475569" stroke-width="3"/>
+      <!-- Code IDE mockup on screen -->
+      <rect x="85" y="85" width="230" height="120" rx="3" fill="#1e293b"/>
+      <rect x="95" y="95" width="50" height="6" rx="2" fill="#38bdf8"/>
+      <rect x="95" y="108" width="90" height="5" rx="2" fill="#94a3b8"/>
+      <rect x="110" y="120" width="70" height="5" rx="2" fill="#a855f7"/>
+      <rect x="110" y="132" width="120" height="5" rx="2" fill="#f59e0b"/>
+    
+
+  <!-- Title Bottom Strip -->
+  <g transform="translate(30, 246)">
+    <rect width="340" height="30" rx="8" fill="#ffffff" opacity="0.95" filter="url(#cardShadow)"/>
+    <text x="170" y="20" fill="#0f172a" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="800" text-anchor="middle">
+      Dell UltraSharp 32 4K (U3223QE)
+    </text>
+  </g>
+</svg>

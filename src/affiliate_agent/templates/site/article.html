@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.seo_metadata.meta_title }}{% endblock %}
+{% block description %}{{ article.seo_metadata.meta_description }}{% endblock %}
+{% block canonical %}{{ site_url }}/reviews/{{ article.slug }}.html{% endblock %}
+
+{% block head_extra %}
+<!-- Schema.org Structured Data -->
+<script type="application/ld+json">
+{{ article.seo_metadata.schema_jsonld|tojson(indent=2) }}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container breadcrumb-container">
+    <nav class="breadcrumbs">
+        <a href="{{ root_path }}index.html">Home</a> /
+        <a href="{{ root_path }}categories/{{ category_slug }}.html">{{ article.category }}</a> /
+        <span class="active">{{ article.title|truncate(40) }}</span>
+    </nav>
+</div>
+
+<article class="container article-layout">
+    <div class="article-main">
+        <header class="article-header">
+            <div class="article-tags">
+                <span class="category-chip">{{ article.category }}</span>
+                <span class="tested-badge">✓ Tested & Verified</span>
+            </div>
+            <h1 class="article-title">{{ article.title }}</h1>
+            <div class="article-meta-row">
+                <span class="author-tag">By SmartPick Research Labs</span>
+                <span class="meta-sep">•</span>
+                <span class="read-time">{{ article.reading_time_mins }} min read</span>
+                <span class="meta-sep">•</span>
+                <span class="date-updated">Updated Daily: {{ current_date }}</span>
+            </div>
+        </header>
+
+        {% if article.type == "review" and article.product %}
+        <!-- Product Spotlight Hero Banner for Reviews -->
+        <div class="product-review-hero-card">
+            <div class="review-hero-header">
+                <div>
+                    <span class="brand-sub">{{ article.product.brand }}</span>
+                    <h2 class="hero-product-name">{{ article.product.name }}</h2>
+                    <div class="rating-row">
+                        <span class="stars">⭐⭐⭐⭐⭐</span>
+                        <span class="rating-number">{{ article.product.rating }}/5 Score</span>
+                        <span class="rating-count">({{ article.product.rating_count }} buyer reviews)</span>
+                    </div>
+                </div>
+                <div class="review-hero-price-box">
+                    <div class="price-val">{{ article.product.price }}</div>
+                    <a href="{{ article.product.affiliate_url }}" target="_blank" rel="nofollow sponsored" class="btn btn-primary btn-large pulse-btn">
+                        Check Best Price on Amazon/Merchant →
+                    </a>
+                </div>
+            </div>
+
+            <!-- Pros & Cons Grid -->
+            <div class="pros-cons-grid">
+                <div class="pros-card">
+                    <h4>👍 What We Loved</h4>
+                    <ul>
+                        {% for pro in article.product.pros %}
+                        <li>{{ pro }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="cons-card">
+                    <h4>👎 Limitations to Consider</h4>
+                    <ul>
+                        {% for con in article.product.cons %}
+                        <li>{{ con }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Article HTML Content -->
+        <div class="article-body markdown-content">
+            {{ content_html|safe }}
+        </div>
+
+        {% if article.type == "review" and article.product %}
+        <!-- Bottom Call to Action -->
+        <div class="article-bottom-cta">
+            <h3>Ready to get the {{ article.product.name }}?</h3>
+            <p>Check the latest verified pricing and discount offers available today.</p>
+            <a href="{{ article.product.affiliate_url }}" target="_blank" rel="nofollow sponsored" class="btn btn-primary btn-large">
+                View Deal on Official Merchant Store →
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Internal Links Section -->
+        {% if article.seo_metadata.internal_links %}
+        <div class="related-articles-box">
+            <h3>Related Recommendations & Comparison Guides</h3>
+            <div class="related-links-list">
+                {% for link in article.seo_metadata.internal_links %}
+                <a href="{{ root_path }}reviews/{{ link.url }}" class="related-link-item">
+                    <span>📖 {{ link.title }}</span>
+                    <span class="arrow">→</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</article>
+{% endblock %}

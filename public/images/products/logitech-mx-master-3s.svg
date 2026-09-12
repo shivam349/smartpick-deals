@@ -1,0 +1,40 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="400" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#f0f9ff"/><stop offset="100%" stopColor="#bae6fd"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" floodColor="#0f172a" floodOpacity="0.08" />
+    </filter>
+  </defs>
+  <!-- Background Card -->
+  <rect width="400" height="300" rx="16" fill="url(#bgGrad)" />
+  <rect x="12" y="12" width="376" height="276" rx="12" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 4" fill="none" opacity="0.6"/>
+  
+  <!-- Category Pill -->
+  <g transform="translate(30, 30)">
+    <rect width="110" height="24" rx="12" fill="#ffffff" opacity="0.9"/>
+    <text x="55" y="16" fill="#475569" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1">
+      MICE
+    </text>
+  </g>
+
+  <!-- Illustration Elements -->
+  
+      <!-- Ergonomic Mouse Contour -->
+      <path d="M150 200 C140 180, 140 120, 170 95 C195 75, 235 90, 245 130 C255 170, 245 200, 210 215 C180 225, 160 215, 150 200 Z" fill="#1e293b" stroke="#0f172a" stroke-width="3"/>
+      <!-- Thumb Rest Flare -->
+      <path d="M145 155 C125 165, 125 185, 148 198 Z" fill="#334155"/>
+      <!-- MagSpeed Metal Scroll Wheel -->
+      <rect x="195" y="95" width="12" height="30" rx="6" fill="#94a3b8" stroke="#cbd5e1" stroke-width="1.5"/>
+      <circle cx="140" cy="175" r="4" fill="#38bdf8"/>
+    
+
+  <!-- Title Bottom Strip -->
+  <g transform="translate(30, 246)">
+    <rect width="340" height="30" rx="8" fill="#ffffff" opacity="0.95" filter="url(#cardShadow)"/>
+    <text x="170" y="20" fill="#0f172a" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="800" text-anchor="middle">
+      Logitech MX Master 3S
+    </text>
+  </g>
+</svg>

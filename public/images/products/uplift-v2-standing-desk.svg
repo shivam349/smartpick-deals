@@ -1,0 +1,43 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="400" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#ecfdf5"/><stop offset="100%" stopColor="#a7f3d0"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" floodColor="#0f172a" floodOpacity="0.08" />
+    </filter>
+  </defs>
+  <!-- Background Card -->
+  <rect width="400" height="300" rx="16" fill="url(#bgGrad)" />
+  <rect x="12" y="12" width="376" height="276" rx="12" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 4" fill="none" opacity="0.6"/>
+  
+  <!-- Category Pill -->
+  <g transform="translate(30, 30)">
+    <rect width="110" height="24" rx="12" fill="#ffffff" opacity="0.9"/>
+    <text x="55" y="16" fill="#475569" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1">
+      DESK SETUP
+    </text>
+  </g>
+
+  <!-- Illustration Elements -->
+  
+      <!-- Desktop Surface -->
+      <rect x="70" y="110" width="260" height="18" rx="4" fill="#b45309" stroke="#78350f" stroke-width="2"/>
+      <!-- Dual Motors Legs -->
+      <rect x="100" y="128" width="16" height="85" fill="#334155"/>
+      <rect x="284" y="128" width="16" height="85" fill="#334155"/>
+      <!-- Feet -->
+      <rect x="80" y="210" width="56" height="8" rx="2" fill="#1e293b"/>
+      <rect x="264" y="210" width="56" height="8" rx="2" fill="#1e293b"/>
+      <!-- Digital Handset -->
+      <rect x="270" y="118" width="22" height="8" rx="1" fill="#0284c7"/>
+    
+
+  <!-- Title Bottom Strip -->
+  <g transform="translate(30, 246)">
+    <rect width="340" height="30" rx="8" fill="#ffffff" opacity="0.95" filter="url(#cardShadow)"/>
+    <text x="170" y="20" fill="#0f172a" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="800" text-anchor="middle">
+      Uplift V2 Standing Desk
+    </text>
+  </g>
+</svg>

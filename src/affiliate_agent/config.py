@@ -7,10 +7,25 @@ from pydantic import BaseModel, Field
 
 
 class AgentConfig(BaseModel):
-    model: str = "claude-sonnet-4-6"
+    model: str = "gemini-2.5-flash"
     max_turns: int | None = None
     max_budget_usd: float | None = None
     verbose: bool = False
+
+
+class CuelinksConfig(BaseModel):
+    publisher_id: str = ""
+    campaign_id: str = ""
+    script_enabled: bool = True
+
+
+class SiteConfig(BaseModel):
+    name: str = "SmartPick Reviews"
+    url: str = "https://smartpick.reviews"
+    output_dir: str = "./site_output"
+    target_categories: int = 5
+    target_products: int = 25
+    target_pages: int = 15
 
 
 class ContentConfig(BaseModel):
@@ -28,6 +43,8 @@ class OutputConfig(BaseModel):
 
 class Config(BaseModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
+    cuelinks: CuelinksConfig = Field(default_factory=CuelinksConfig)
+    site: SiteConfig = Field(default_factory=SiteConfig)
     content: ContentConfig = Field(default_factory=ContentConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
 
