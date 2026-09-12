@@ -29,10 +29,6 @@ export const metadata: Metadata = {
   alternates: {
     canonical: siteUrl,
   },
-  other: {
-    "mitgo-verification": "ffdee161-321c-4e2f-8590-6dab0b0dafee",
-    "admitad-verification": "ffdee161-321c-4e2f-8590-6dab0b0dafee",
-  },
 };
 
 export default function RootLayout({
