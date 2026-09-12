@@ -11,12 +11,12 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "SmartPick — Best Deals, Reviews & Comparisons",
   description: "Compare products, discover genuine deals, and find the best tech products with independent research.",
-  metadataBase: new URL(process.env.SITE_URL || "https://smartpick.reviews"),
+  metadataBase: new URL(process.env.SITE_URL || "https://smartpick-deals.vercel.app"),
   openGraph: {
     type: "website",
     title: "SmartPick — Best Deals & Reviews",
     description: "Independent product comparisons, buying guides and live deals.",
-    url: "https://smartpick.reviews",
+    url: process.env.SITE_URL || "https://smartpick-deals.vercel.app",
     siteName: "SmartPick",
   },
   twitter: {
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     description: "Independent product comparisons, buying guides and live deals.",
   },
   alternates: {
-    canonical: "https://smartpick.reviews",
+    canonical: process.env.SITE_URL || "https://smartpick-deals.vercel.app",
   },
 };
 
