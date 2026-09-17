@@ -121,18 +121,26 @@ export class CuelinksProvider implements AffiliateProvider {
     }
   }
 
-  async requestAccess(id: number | string): Promise<{
+  async requestAccess(
+    id: number | string,
+    options?: { promotion_details?: string; channel_id?: number | string }
+  ): Promise<{
     success: boolean;
     status: string;
     id?: number;
+    channelId?: number;
     message?: string;
   }> {
     try {
-      const res = await cuelinksRequestAccess(id);
+      const res = await cuelinksRequestAccess(id, {
+        promotion_details: options?.promotion_details,
+        channel_id: options?.channel_id,
+      });
       return {
         success: true,
         status: res.data.status,
         id: res.data.id,
+        channelId: res.data.channel_id,
         message: `Access requested successfully. Status: ${res.data.status}`,
       };
     } catch (err: any) {
@@ -169,7 +177,7 @@ export class CuelinksProvider implements AffiliateProvider {
     let statusReason = "";
 
     if (!isAffiliated) {
-      statusReason = "NOT CURRENTLY MONETIZABLE: Account lacks active merchant approval or campaign is currently paused/restricted.";
+      statusReason = "Not currently monetizable — access/campaign status must be reviewed.";
     }
 
     return {

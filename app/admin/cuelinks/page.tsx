@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -15,16 +15,24 @@ import {
   SlidersHorizontal,
   Info,
   Layers,
-  ArrowRight,
   Copy,
   Check,
   Building2,
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  Lock,
+  Star,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  SMARTPICK_WEBSITE_URL,
+  SMARTPICK_PROMOTION_DETAILS,
+  canRequestAccess,
+  getCampaignAccessLabel,
+} from "@/lib/cuelinks";
 
 interface HealthData {
   connected: boolean;
@@ -105,6 +113,19 @@ interface BatchTestSummary {
   }>;
 }
 
+const SMARTPICK_PRIORITY_MERCHANTS = [
+  "Amazon India",
+  "Flipkart",
+  "Myntra",
+  "AJIO",
+  "Croma",
+  "Reliance Digital",
+  "Tata CLiQ",
+  "Samsung",
+  "BoAt",
+  "Nykaa",
+];
+
 export default function CuelinksAdminDashboard() {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
@@ -117,12 +138,14 @@ export default function CuelinksAdminDashboard() {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState("all");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState("all");
+  const [selectedPriorityMerchant, setSelectedPriorityMerchant] = useState<string | null>(null);
   const [countryFilter, setCountryFilter] = useState("india");
 
-  // Selected Campaign Details Modal
+  // Modals
   const [detailModal, setDetailModal] = useState<CampaignItem | null>(null);
+  const [confirmRequestCampaign, setConfirmRequestCampaign] = useState<CampaignItem | null>(null);
+  const [submittingAccess, setSubmittingAccess] = useState(false);
 
   // Interactive Link Tester State
   const [testUrl, setTestUrl] = useState("https://www.boat-lifestyle.com/products/airdopes-141");
@@ -153,7 +176,7 @@ export default function CuelinksAdminDashboard() {
       const res = await fetch("/api/admin/cuelinks/test");
       const data = await res.json();
       setHealth(data);
-    } catch (err: any) {
+    } catch {
       setHealth({ connected: false });
     } finally {
       setHealthLoading(false);
@@ -166,16 +189,26 @@ export default function CuelinksAdminDashboard() {
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
-      params.set("per_page", "25");
+      params.set("per_page", "30");
       if (countryFilter) params.set("country", countryFilter);
       if (searchQuery) params.set("query", searchQuery);
-      if (selectedCategory && selectedCategory !== "all") {
-        params.set("category", selectedCategory);
+      if (selectedPriorityMerchant) {
+        params.set("query", selectedPriorityMerchant);
       }
-      if (selectedFilter === "accessible") {
+
+      // Exact Cuelinks access_status mapping
+      if (selectedStatusFilter === "open") {
         params.set("access_status", "open");
-      } else if (selectedFilter === "approval") {
+      } else if (selectedStatusFilter === "approved") {
+        params.set("access_status", "approved");
+      } else if (selectedStatusFilter === "not_applied") {
         params.set("access_status", "not_applied");
+      } else if (selectedStatusFilter === "pending") {
+        params.set("access_status", "pending");
+      } else if (selectedStatusFilter === "paused") {
+        params.set("access_status", "paused");
+      } else if (selectedStatusFilter === "rejected") {
+        params.set("access_status", "rejected");
       }
 
       const res = await fetch(`/api/admin/cuelinks/campaigns?${params.toString()}`);
@@ -186,12 +219,12 @@ export default function CuelinksAdminDashboard() {
         setTotalPages(data.pagination?.total_pages || 1);
         setTotalCount(data.pagination?.total || 0);
       }
-    } catch (err: any) {
+    } catch {
       setNotice({ text: "Failed to load campaigns", type: "error" });
     } finally {
       setLoadingCampaigns(false);
     }
-  }, [page, countryFilter, searchQuery, selectedCategory, selectedFilter]);
+  }, [page, countryFilter, searchQuery, selectedPriorityMerchant, selectedStatusFilter]);
 
   useEffect(() => {
     fetchHealth();
@@ -202,28 +235,46 @@ export default function CuelinksAdminDashboard() {
   }, [fetchCampaigns]);
 
   // Request Campaign Access
-  const handleRequestAccess = async (campaignId: number, name: string) => {
-    setNotice({ text: `Submitting access request for ${name}...`, type: "info" });
+  const executeRequestAccess = async () => {
+    if (!confirmRequestCampaign) return;
+
+    setSubmittingAccess(true);
     try {
       const res = await fetch("/api/admin/cuelinks/request-access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId }),
+        body: JSON.stringify({
+          campaignId: confirmRequestCampaign.id,
+        }),
       });
       const data = await res.json();
 
       if (data.success) {
         setNotice({
-          text: `Access requested for ${name}! Status: ${data.status}`,
+          text: `✅ Request submitted: Status: Pending (Request ID: #${data.requestId || data.id || "created"})`,
           type: "success",
         });
-        // Refresh campaigns
+        // Optimistically update local campaign access status to pending
+        setCampaigns((prev) =>
+          prev.map((c) =>
+            c.id === confirmRequestCampaign.id
+              ? { ...c, accessStatus: "pending", group: "APPROVAL_REQUIRED" }
+              : c
+          )
+        );
+        setConfirmRequestCampaign(null);
+        // Refresh campaign status from server
         fetchCampaigns();
       } else {
-        setNotice({ text: `Request failed: ${data.error || data.message}`, type: "error" });
+        setNotice({
+          text: `Request failed: ${data.error || data.message || "Approval unavailable"}`,
+          type: "error",
+        });
       }
     } catch (err: any) {
-      setNotice({ text: `Error: ${err.message}`, type: "error" });
+      setNotice({ text: `Network error: ${err.message}`, type: "error" });
+    } finally {
+      setSubmittingAccess(false);
     }
   };
 
@@ -310,8 +361,17 @@ export default function CuelinksAdminDashboard() {
                 <Badge variant="destructive" className="text-xs">Disconnected</Badge>
               )}
             </h1>
-            <p className="text-sm text-slate-600 mt-1">
-              Server-side merchant campaign discovery, live monetization diagnostics, and conversion validation.
+            <p className="text-sm text-slate-600 mt-1 flex items-center gap-2">
+              <span>Canonical Live Website:</span>
+              <a
+                href={SMARTPICK_WEBSITE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 font-bold font-mono hover:underline flex items-center gap-1"
+              >
+                <span>{SMARTPICK_WEBSITE_URL}</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </p>
           </div>
 
@@ -366,10 +426,8 @@ export default function CuelinksAdminDashboard() {
           </div>
         )}
 
-        {/* PHASE 11: KPI Overview Cards */}
+        {/* KPI Overview Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-          
-          {/* Card 1: API Status */}
           <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
               <span>API Status</span>
@@ -383,21 +441,19 @@ export default function CuelinksAdminDashboard() {
             </div>
           </div>
 
-          {/* Card 2: Total Campaigns */}
           <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
               <span>India Campaigns</span>
               <Building2 className="h-4 w-4 text-blue-600" />
             </div>
             <div className="text-xl font-black text-slate-900">
-              {health?.campaigns?.total_india || "320+"}
+              {health?.campaigns?.total_india || "323"}
             </div>
             <div className="text-[11px] text-slate-500 mt-1">
               {health?.campaigns?.total_global?.toLocaleString() || "28,500+"} Global
             </div>
           </div>
 
-          {/* Card 3: Accessible */}
           <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-emerald-800 mb-1">
               <span>Accessible</span>
@@ -409,7 +465,6 @@ export default function CuelinksAdminDashboard() {
             <div className="text-[11px] text-emerald-800 mt-1">Ready to monetize</div>
           </div>
 
-          {/* Card 4: Approval Required */}
           <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-amber-800 mb-1">
               <span>Needs Approval</span>
@@ -418,10 +473,9 @@ export default function CuelinksAdminDashboard() {
             <div className="text-xl font-black text-amber-700">
               {health?.campaigns?.approval_required || "Pending"}
             </div>
-            <div className="text-[11px] text-amber-800 mt-1">One-click request</div>
+            <div className="text-[11px] text-amber-800 mt-1">Application workflow</div>
           </div>
 
-          {/* Card 5: Inactive/Paused */}
           <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
               <span>Unavailable</span>
@@ -433,7 +487,6 @@ export default function CuelinksAdminDashboard() {
             <div className="text-[11px] text-slate-500 mt-1">Paused / Closed</div>
           </div>
 
-          {/* Card 6: Last Checked */}
           <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
               <span>Last Checked</span>
@@ -444,10 +497,9 @@ export default function CuelinksAdminDashboard() {
             </div>
             <div className="text-[10px] text-slate-500 mt-1">Server authenticated</div>
           </div>
-
         </div>
 
-        {/* BATCH TEST REPORT SECTION (Visible after batch test) */}
+        {/* BATCH TEST REPORT SECTION */}
         {batchSummary && (
           <div className="rounded-xl border border-blue-200 bg-white p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -523,7 +575,321 @@ export default function CuelinksAdminDashboard() {
           </div>
         )}
 
-        {/* PHASE 4 & 10: Interactive Link Conversion & Attribution Tester */}
+        {/* SECTION 4: SMARTPICK PRIORITY MERCHANTS BAR */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-900 uppercase tracking-wider">
+              <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+              <span>SmartPick Priority Target Merchants</span>
+            </div>
+            {selectedPriorityMerchant && (
+              <button
+                onClick={() => {
+                  setSelectedPriorityMerchant(null);
+                  setPage(1);
+                }}
+                className="text-xs text-blue-600 hover:underline font-medium"
+              >
+                Clear Priority Filter
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {SMARTPICK_PRIORITY_MERCHANTS.map((merchant) => {
+              const isSelected = selectedPriorityMerchant === merchant;
+              return (
+                <button
+                  key={merchant}
+                  onClick={() => {
+                    setSelectedPriorityMerchant(isSelected ? null : merchant);
+                    setSearchQuery("");
+                    setPage(1);
+                  }}
+                  className={`text-xs px-3 py-1.5 rounded-lg border font-semibold transition ${
+                    isSelected
+                      ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                      : "bg-white border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {merchant}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* SECTION 4: CAMPAIGNS TABLE & DISCOVERY */}
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Layers className="h-4 w-4 text-blue-600" />
+                <span>Discovered Merchant Campaigns</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Showing {campaigns.length} of {totalCount} campaigns from Cuelinks V3
+              </p>
+            </div>
+
+            {/* Search Input */}
+            <div className="flex items-center gap-2">
+              <div className="relative w-64">
+                <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setSelectedPriorityMerchant(null);
+                    setPage(1);
+                  }}
+                  placeholder="Search merchant or domain..."
+                  className="w-full text-xs pl-8 pr-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4: Required Filters: All, Open, Approved, Not Applied, Pending, Paused, Rejected */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <span className="text-xs font-semibold text-slate-500 mr-1 flex items-center gap-1">
+              <SlidersHorizontal className="h-3 w-3" /> Status:
+            </span>
+            {[
+              { id: "all", label: "All" },
+              { id: "open", label: "Open" },
+              { id: "approved", label: "Approved" },
+              { id: "not_applied", label: "Not Applied" },
+              { id: "pending", label: "Pending" },
+              { id: "paused", label: "Paused" },
+              { id: "rejected", label: "Rejected" },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => {
+                  setSelectedStatusFilter(f.id);
+                  setPage(1);
+                }}
+                className={`text-xs px-3 py-1 rounded-full font-medium transition ${
+                  selectedStatusFilter === f.id
+                    ? "bg-slate-900 text-white shadow-sm font-bold"
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Table of Columns: Merchant | Campaign | Campaign ID | Category | Country | Access Status | Payout/EPC | Deep Link | Request Access | Monetization Test */}
+          <div className="overflow-x-auto border border-slate-200 rounded-lg">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
+                <tr>
+                  <th className="py-3 px-3">Merchant</th>
+                  <th className="py-3 px-3">Campaign</th>
+                  <th className="py-3 px-3 font-mono">ID</th>
+                  <th className="py-3 px-3">Category</th>
+                  <th className="py-3 px-3">Country</th>
+                  <th className="py-3 px-3">Access Status</th>
+                  <th className="py-3 px-3">Payout / EPC</th>
+                  <th className="py-3 px-3">Deep Link</th>
+                  <th className="py-3 px-3 text-center">Request Access</th>
+                  <th className="py-3 px-3 text-right">Monetization Test</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {loadingCampaigns ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400">
+                      <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-blue-600" />
+                      Loading campaigns from Cuelinks V3...
+                    </td>
+                  </tr>
+                ) : campaigns.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400">
+                      No campaigns matched your current filter criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  campaigns.map((c) => {
+                    const reqCheck = canRequestAccess(c.accessStatus);
+                    const accessLabel = getCampaignAccessLabel(c.accessStatus);
+
+                    return (
+                      <tr key={c.id} className="hover:bg-slate-50/70 transition">
+                        {/* 1. Merchant */}
+                        <td className="py-3 px-3">
+                          <div className="font-bold text-slate-900">{c.merchantName}</div>
+                          <div className="text-[11px] text-slate-400 font-mono truncate max-w-[130px]">
+                            {c.domain}
+                          </div>
+                        </td>
+
+                        {/* 2. Campaign */}
+                        <td className="py-3 px-3 font-medium text-slate-800 max-w-[140px] truncate">
+                          {c.name}
+                        </td>
+
+                        {/* 3. Campaign ID */}
+                        <td className="py-3 px-3 font-mono text-slate-600 font-semibold">
+                          {c.id}
+                        </td>
+
+                        {/* 4. Category */}
+                        <td className="py-3 px-3">
+                          <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium">
+                            {c.category || "General"}
+                          </span>
+                        </td>
+
+                        {/* 5. Country */}
+                        <td className="py-3 px-3 text-slate-600">{c.country || "Global"}</td>
+
+                        {/* 6. Access Status */}
+                        <td className="py-3 px-3">
+                          {c.accessStatus === "open" ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold text-[11px]">
+                              <CheckCircle2 className="h-3 w-3" /> Open
+                            </span>
+                          ) : c.accessStatus === "approved" || c.accessStatus === "active" ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold text-[11px]">
+                              <CheckCircle2 className="h-3 w-3" /> Approved
+                            </span>
+                          ) : c.accessStatus === "pending" ? (
+                            <span className="inline-flex items-center gap-1 text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full font-medium text-[11px]">
+                              <Clock className="h-3 w-3 text-amber-600" /> Pending Approval
+                            </span>
+                          ) : c.accessStatus === "paused" ? (
+                            <span className="inline-flex items-center gap-1 text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full font-medium text-[11px]">
+                              <Lock className="h-3 w-3 text-slate-400" /> Paused
+                            </span>
+                          ) : c.accessStatus === "rejected" ? (
+                            <span className="inline-flex items-center gap-1 text-red-700 bg-red-50 px-2 py-0.5 rounded-full font-medium text-[11px]">
+                              <XCircle className="h-3 w-3 text-red-500" /> Rejected
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full font-medium text-[11px]">
+                              Not Applied
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 7. Payout / EPC */}
+                        <td className="py-3 px-3">
+                          <div className="font-semibold text-slate-800">{c.payout || "Variable"}</div>
+                          {c.epc && (
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              EPC: {c.epc}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 8. Deep Link */}
+                        <td className="py-3 px-3">
+                          {c.deepLinkSupported ? (
+                            <span className="text-emerald-700 font-semibold text-[11px]">Supported</span>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">Homepage only</span>
+                          )}
+                        </td>
+
+                        {/* 9. Request Access */}
+                        <td className="py-3 px-3 text-center">
+                          {reqCheck.allowed ? (
+                            <Button
+                              onClick={() => setConfirmRequestCampaign(c)}
+                              size="sm"
+                              className="text-[11px] h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs"
+                            >
+                              Request Access
+                            </Button>
+                          ) : c.accessStatus === "pending" ? (
+                            <span className="text-[11px] text-amber-700 font-medium bg-amber-50 px-2 py-1 rounded">
+                              Pending — waiting for approval
+                            </span>
+                          ) : c.accessStatus === "open" ? (
+                            <span className="text-[11px] text-emerald-700 font-semibold">
+                              Open (Active)
+                            </span>
+                          ) : c.accessStatus === "approved" || c.accessStatus === "active" ? (
+                            <span className="text-[11px] text-emerald-700 font-semibold">
+                              Approved
+                            </span>
+                          ) : c.accessStatus === "paused" ? (
+                            <span className="text-[11px] text-slate-500">
+                              Paused — unavailable
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400">
+                              {accessLabel}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 10. Monetization Test */}
+                        <td className="py-3 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              onClick={() => setDetailModal(c)}
+                              size="sm"
+                              variant="outline"
+                              className="text-[11px] h-7 px-2"
+                            >
+                              Details
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                const destUrl = c.raw?.url || `https://${c.domain}`;
+                                setTestUrl(destUrl);
+                                handleConvertLink(destUrl);
+                              }}
+                              size="sm"
+                              variant="outline"
+                              className="text-[11px] h-7 px-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                            >
+                              Test Link
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between pt-2">
+            <div className="text-xs text-slate-500">
+              Page {page} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || loadingCampaigns}
+                size="sm"
+                variant="outline"
+                className="text-xs h-8 px-3"
+              >
+                <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Previous
+              </Button>
+              <Button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages || loadingCampaigns}
+                size="sm"
+                variant="outline"
+                className="text-xs h-8 px-3"
+              >
+                Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* INTERACTIVE LINK CONVERSION TESTER */}
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
           <div>
             <div className="flex items-center justify-between">
@@ -537,56 +903,6 @@ export default function CuelinksAdminDashboard() {
               Test any live merchant product or store URL. SmartPick validates that Cuelinks returns{" "}
               <code className="text-blue-600 font-bold font-mono">affiliated === true</code> before marking it eligible for commissions.
             </p>
-          </div>
-
-          {/* Quick preset chips */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-xs text-slate-400 font-medium mr-1">Presets:</span>
-            <button
-              onClick={() => {
-                setTestUrl("https://www.boat-lifestyle.com/products/airdopes-141");
-                handleConvertLink("https://www.boat-lifestyle.com/products/airdopes-141");
-              }}
-              className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full font-medium transition"
-            >
-              🎧 BoAt (Monetizable)
-            </button>
-            <button
-              onClick={() => {
-                setTestUrl("https://www.flipkart.com/apple-iphone-15-black-128-gb/p/itm6ac6485515ae4");
-                handleConvertLink("https://www.flipkart.com/apple-iphone-15-black-128-gb/p/itm6ac6485515ae4");
-              }}
-              className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition"
-            >
-              📱 Flipkart (Test)
-            </button>
-            <button
-              onClick={() => {
-                setTestUrl("https://www.amazon.in/dp/B0CX58HYR3");
-                handleConvertLink("https://www.amazon.in/dp/B0CX58HYR3");
-              }}
-              className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition"
-            >
-              📦 Amazon India (Test)
-            </button>
-            <button
-              onClick={() => {
-                setTestUrl("https://www.croma.com/apple-iphone-15-128gb-black-/p/300762");
-                handleConvertLink("https://www.croma.com/apple-iphone-15-128gb-black-/p/300762");
-              }}
-              className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition"
-            >
-              ⚡ Croma (Test)
-            </button>
-            <button
-              onClick={() => {
-                setTestUrl("https://www.myntra.com/tshirts/roadster/roadster-men-black-cotton-pure-cotton-t-shirt/2297855/buy");
-                handleConvertLink("https://www.myntra.com/tshirts/roadster/roadster-men-black-cotton-pure-cotton-t-shirt/2297855/buy");
-              }}
-              className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition"
-            >
-              👕 Myntra (Test)
-            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1">
@@ -674,13 +990,14 @@ export default function CuelinksAdminDashboard() {
                   </span>
                 </div>
 
-                <span className="text-[11px] text-slate-500 font-medium">
-                  {conversionResult.statusReason}
+                <span className="text-[11px] text-slate-600 font-medium">
+                  {conversionResult.affiliated
+                    ? "Active & approved for publisher commission"
+                    : "Not currently monetizable — access/campaign status must be reviewed."}
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                {/* Short URL */}
                 <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
                   <div className="flex items-center justify-between text-slate-500 font-semibold text-[11px]">
                     <span>Shortened Affiliate URL</span>
@@ -699,7 +1016,6 @@ export default function CuelinksAdminDashboard() {
                   </div>
                 </div>
 
-                {/* Full Tracking URL */}
                 <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
                   <div className="flex items-center justify-between text-slate-500 font-semibold text-[11px]">
                     <span>Full Redirect Tracking URL</span>
@@ -718,269 +1034,87 @@ export default function CuelinksAdminDashboard() {
                   </div>
                 </div>
               </div>
-
-              {!conversionResult.affiliated && (
-                <div className="text-[11px] text-amber-900 bg-amber-100/70 p-2.5 rounded-md border border-amber-200 flex items-center gap-2">
-                  <Info className="h-3.5 w-3.5 text-amber-700 shrink-0" />
-                  <span>
-                    <strong>Commission Protection Notice:</strong> Cuelinks returned{" "}
-                    <code>affiliated = false</code>. Purchases through this link will not generate revenue until your publisher account is approved for this campaign.
-                  </span>
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* PHASE 3: CAMPAIGNS TABLE & DISCOVERY */}
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Layers className="h-4 w-4 text-blue-600" />
-                <span>Discovered Merchant Campaigns</span>
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Showing {campaigns.length} of {totalCount} campaigns from Cuelinks V3
-              </p>
-            </div>
+        {/* SECTION 5: REQUEST ACCESS CONFIRMATION MODAL */}
+        {confirmRequestCampaign && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5">
+              <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">
+                    Request access to {confirmRequestCampaign.name}?
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Campaign ID: <span className="font-mono font-bold text-slate-700">{confirmRequestCampaign.id}</span> | Domain: {confirmRequestCampaign.domain}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setConfirmRequestCampaign(null)}
+                  disabled={submittingAccess}
+                  className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1"
+                >
+                  ✕
+                </button>
+              </div>
 
-            {/* Search Input */}
-            <div className="flex items-center gap-2">
-              <div className="relative w-64">
-                <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search merchant or domain..."
-                  className="w-full text-xs pl-8 pr-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                />
+              {/* Website verification anchor */}
+              <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1 text-xs">
+                <div className="font-bold text-blue-900 flex items-center gap-1.5">
+                  <Globe className="h-4 w-4 text-blue-600" />
+                  <span>Target Publisher Website:</span>
+                </div>
+                <div className="font-mono text-blue-700 font-bold pl-5">
+                  {SMARTPICK_WEBSITE_URL}
+                </div>
+                <div className="text-[11px] text-slate-500 pl-5">
+                  Default approved publisher channel will be used automatically.
+                </div>
+              </div>
+
+              {/* Truthful Promotion Statement Preview */}
+              <div className="space-y-1.5 text-xs">
+                <label className="font-bold text-slate-800 block">
+                  Truthful Promotion Statement (Sent to Cuelinks & Merchant):
+                </label>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 text-xs leading-relaxed italic">
+                  &ldquo;{SMARTPICK_PROMOTION_DETAILS}&rdquo;
+                </div>
+                <p className="text-[11px] text-slate-500 pt-0.5">
+                  ✓ Contains zero fabricated traffic or revenue numbers. Discloses SmartPick as an organic SEO shopping content platform.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 pt-4">
+                <Button
+                  onClick={() => setConfirmRequestCampaign(null)}
+                  disabled={submittingAccess}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={executeRequestAccess}
+                  disabled={submittingAccess}
+                  size="sm"
+                  className="text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${submittingAccess ? "animate-spin" : ""}`} />
+                  <span>{submittingAccess ? "Submitting Application..." : "Confirm & Submit Request"}</span>
+                </Button>
               </div>
             </div>
           </div>
-
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 pt-3">
-            <span className="text-xs font-semibold text-slate-500 mr-1 flex items-center gap-1">
-              <SlidersHorizontal className="h-3 w-3" /> Access:
-            </span>
-            {[
-              { id: "all", label: "All Campaigns" },
-              { id: "accessible", label: "Accessible Only" },
-              { id: "approval", label: "Approval Required" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => {
-                  setSelectedFilter(f.id);
-                  setPage(1);
-                }}
-                className={`text-xs px-3 py-1 rounded-full font-medium transition ${
-                  selectedFilter === f.id
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-
-            <div className="h-4 w-px bg-slate-300 mx-1 hidden sm:block" />
-
-            <span className="text-xs font-semibold text-slate-500 mr-1">Category:</span>
-            {[
-              "All",
-              "Electronics",
-              "Fashion",
-              "Health & Beauty",
-              "Home & Kitchen",
-              "Travel",
-            ].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setSelectedCategory(cat.toLowerCase());
-                  setPage(1);
-                }}
-                className={`text-xs px-3 py-1 rounded-full font-medium transition ${
-                  selectedCategory === cat.toLowerCase()
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-600"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Campaigns Table */}
-          <div className="overflow-x-auto border border-slate-200 rounded-lg">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
-                <tr>
-                  <th className="py-3 px-3.5">Merchant</th>
-                  <th className="py-3 px-3.5">ID</th>
-                  <th className="py-3 px-3.5">Category</th>
-                  <th className="py-3 px-3.5">Country</th>
-                  <th className="py-3 px-3.5">Access Status</th>
-                  <th className="py-3 px-3.5">Payout / EPC</th>
-                  <th className="py-3 px-3.5">Deep Link</th>
-                  <th className="py-3 px-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {loadingCampaigns ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
-                      <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-blue-600" />
-                      Loading campaigns from Cuelinks V3...
-                    </td>
-                  </tr>
-                ) : campaigns.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
-                      No campaigns matched your current filters.
-                    </td>
-                  </tr>
-                ) : (
-                  campaigns.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-50/70 transition">
-                      {/* Merchant */}
-                      <td className="py-3 px-3.5">
-                        <div className="font-bold text-slate-900">{c.name}</div>
-                        <div className="text-[11px] text-slate-400 font-mono truncate max-w-[140px]">
-                          {c.domain}
-                        </div>
-                      </td>
-
-                      {/* ID */}
-                      <td className="py-3 px-3.5 font-mono text-slate-600">{c.id}</td>
-
-                      {/* Category */}
-                      <td className="py-3 px-3.5">
-                        <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium">
-                          {c.category || "General"}
-                        </span>
-                      </td>
-
-                      {/* Country */}
-                      <td className="py-3 px-3.5 text-slate-600">{c.country || "Global"}</td>
-
-                      {/* Access Status */}
-                      <td className="py-3 px-3.5">
-                        {c.group === "ACCESSIBLE" ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold text-[11px]">
-                            <CheckCircle2 className="h-3 w-3" />
-                            {c.accessStatus.toUpperCase()}
-                          </span>
-                        ) : c.group === "APPROVAL_REQUIRED" ? (
-                          <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full font-bold text-[11px]">
-                            <Clock className="h-3 w-3" />
-                            {c.accessStatus.toUpperCase()}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full font-medium text-[11px]">
-                            <XCircle className="h-3 w-3" />
-                            {c.accessStatus.toUpperCase()}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Payout & EPC */}
-                      <td className="py-3 px-3.5">
-                        <div className="font-semibold text-slate-800">{c.payout || "Variable"}</div>
-                        {c.epc && (
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            EPC: {c.epc}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Deep Link */}
-                      <td className="py-3 px-3.5">
-                        {c.deepLinkSupported ? (
-                          <span className="text-emerald-700 font-semibold text-[11px]">Supported</span>
-                        ) : (
-                          <span className="text-slate-400 text-[11px]">Homepage only</span>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3 px-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            onClick={() => setDetailModal(c)}
-                            size="sm"
-                            variant="outline"
-                            className="text-[11px] h-7 px-2"
-                          >
-                            Details
-                          </Button>
-
-                          {c.group === "APPROVAL_REQUIRED" && (
-                            <Button
-                              onClick={() => handleRequestAccess(c.id, c.name)}
-                              size="sm"
-                              variant="outline"
-                              className="text-[11px] h-7 px-2 text-amber-700 border-amber-300 hover:bg-amber-50"
-                            >
-                              Request Access
-                            </Button>
-                          )}
-
-                          <Button
-                            onClick={() => {
-                              const destUrl = c.raw?.url || `https://${c.domain}`;
-                              setTestUrl(destUrl);
-                              handleConvertLink(destUrl);
-                            }}
-                            size="sm"
-                            variant="default"
-                            className="text-[11px] h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            Test Link
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-between pt-2">
-            <div className="text-xs text-slate-500">
-              Page {page} of {totalPages}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1 || loadingCampaigns}
-                size="sm"
-                variant="outline"
-                className="text-xs h-8 px-3"
-              >
-                <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Previous
-              </Button>
-              <Button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages || loadingCampaigns}
-                size="sm"
-                variant="outline"
-                className="text-xs h-8 px-3"
-              >
-                Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
-              </Button>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* CAMPAIGN DETAILS MODAL */}
         {detailModal && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
               <div className="flex items-start justify-between border-b border-slate-100 pb-4">
                 <div>
@@ -998,7 +1132,6 @@ export default function CuelinksAdminDashboard() {
                 </button>
               </div>
 
-              {/* Status & Payout Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
                   <div className="text-slate-400 font-semibold mb-1">Access</div>
@@ -1020,7 +1153,6 @@ export default function CuelinksAdminDashboard() {
                 </div>
               </div>
 
-              {/* Allowed Media */}
               {detailModal.allowedMedia && detailModal.allowedMedia.length > 0 && (
                 <div className="space-y-1.5 text-xs">
                   <h4 className="font-bold text-slate-900">Allowed Promotion Channels</h4>
@@ -1034,7 +1166,6 @@ export default function CuelinksAdminDashboard() {
                 </div>
               )}
 
-              {/* Disallowed Media */}
               {detailModal.disallowedMedia && detailModal.disallowedMedia.length > 0 && (
                 <div className="space-y-1.5 text-xs">
                   <h4 className="font-bold text-slate-900">Restricted / Disallowed Channels</h4>
@@ -1048,21 +1179,6 @@ export default function CuelinksAdminDashboard() {
                 </div>
               )}
 
-              {/* Allowed Platforms */}
-              {detailModal.allowedPlatforms && detailModal.allowedPlatforms.length > 0 && (
-                <div className="space-y-1.5 text-xs">
-                  <h4 className="font-bold text-slate-900">Supported Platforms</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {detailModal.allowedPlatforms.map((p, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-800 rounded font-medium text-[11px]">
-                        {p}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Footer Actions */}
               <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
                 <Button
                   onClick={() => setDetailModal(null)}
@@ -1072,16 +1188,16 @@ export default function CuelinksAdminDashboard() {
                 >
                   Close
                 </Button>
-                {detailModal.group === "APPROVAL_REQUIRED" && (
+                {canRequestAccess(detailModal.accessStatus).allowed && (
                   <Button
                     onClick={() => {
-                      handleRequestAccess(detailModal.id, detailModal.name);
+                      setConfirmRequestCampaign(detailModal);
                       setDetailModal(null);
                     }}
                     size="sm"
-                    className="text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                    className="text-xs bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    Request Access Now
+                    Request Access
                   </Button>
                 )}
                 <Button
@@ -1092,7 +1208,7 @@ export default function CuelinksAdminDashboard() {
                     handleConvertLink(destUrl);
                   }}
                   size="sm"
-                  className="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                  className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
                 >
                   Test Merchant Link
                 </Button>

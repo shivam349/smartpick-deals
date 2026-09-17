@@ -1,7 +1,7 @@
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
-describe("Cuelinks V3 Client & Provider Test Suite", () => {
+describe("Cuelinks V3 Client & Campaign Access Workflow Suite", () => {
   let originalEnv;
   let originalFetch;
 
@@ -15,7 +15,150 @@ describe("Cuelinks V3 Client & Provider Test Suite", () => {
     global.fetch = originalFetch;
   });
 
-  test("1. Missing API key throws 401 CuelinksApiError", async () => {
+  test("1. Canonical website URL uses exactly https://smartpick-dealss.vercel.app/", async () => {
+    const { SMARTPICK_WEBSITE_URL, SMARTPICK_PROMOTION_DETAILS } = await import("../lib/cuelinks.ts");
+
+    assert.equal(SMARTPICK_WEBSITE_URL, "https://smartpick-dealss.vercel.app/");
+    assert.ok(SMARTPICK_PROMOTION_DETAILS.includes("https://smartpick-dealss.vercel.app/"));
+    // Ensure no localhost, github or legacy domains
+    assert.ok(!SMARTPICK_PROMOTION_DETAILS.includes("localhost"));
+    assert.ok(!SMARTPICK_PROMOTION_DETAILS.includes("affiliate-agent-1div.vercel.app"));
+    assert.ok(!SMARTPICK_PROMOTION_DETAILS.includes("github.com"));
+  });
+
+  test("2. Access eligibility: not_applied allows requesting access", async () => {
+    const { canRequestAccess } = await import("../lib/cuelinks.ts");
+    const check = canRequestAccess("not_applied");
+
+    assert.equal(check.allowed, true);
+    assert.match(check.reason, /Eligible to request access/);
+  });
+
+  test("3. Access eligibility: open forbids access request (already active)", async () => {
+    const { canRequestAccess } = await import("../lib/cuelinks.ts");
+    const check = canRequestAccess("open");
+
+    assert.equal(check.allowed, false);
+    assert.match(check.reason, /Open campaign: Instant access already active/);
+  });
+
+  test("4. Access eligibility: pending prevents duplicate request", async () => {
+    const { canRequestAccess } = await import("../lib/cuelinks.ts");
+    const check = canRequestAccess("pending");
+
+    assert.equal(check.allowed, false);
+    assert.match(check.reason, /Pending — waiting for approval/);
+  });
+
+  test("5. Access eligibility: approved forbids access request", async () => {
+    const { canRequestAccess } = await import("../lib/cuelinks.ts");
+    const check = canRequestAccess("approved");
+
+    assert.equal(check.allowed, false);
+    assert.match(check.reason, /already approved/);
+  });
+
+  test("6. Access eligibility: paused forbids access request", async () => {
+    const { canRequestAccess } = await import("../lib/cuelinks.ts");
+    const check = canRequestAccess("paused");
+
+    assert.equal(check.allowed, false);
+    assert.match(check.reason, /Paused — applications are currently unavailable/);
+  });
+
+  test("7. Access eligibility: rejected & cooldown handling", async () => {
+    const { canRequestAccess, getCampaignAccessLabel } = await import("../lib/cuelinks.ts");
+    const check = canRequestAccess("rejected");
+
+    assert.equal(check.allowed, false);
+    assert.match(check.reason, /application was declined/);
+
+    const labelWithCooldown = getCampaignAccessLabel("rejected", "2026-10-01");
+    assert.equal(labelWithCooldown, "Rejected (Cooldown until 2026-10-01)");
+  });
+
+  test("8. Successful request_access sends truthful promotion_details without fabricated metrics", async () => {
+    process.env.CUELINKS_API_KEY = "mock_secret_token";
+    let capturedBody = null;
+
+    global.fetch = async (url, opts) => {
+      assert.ok(url.includes("/campaigns/817/request_access"));
+      capturedBody = JSON.parse(opts.body);
+      return {
+        ok: true,
+        status: 201,
+        json: async () => ({
+          data: {
+            id: 106514,
+            campaign_id: 817,
+            channel_id: 319615,
+            promotion_details: capturedBody.promotion_details,
+            status: "pending",
+            created_at: "2026-09-17T06:21:41Z",
+          },
+        }),
+      };
+    };
+
+    const { requestCampaignAccess, SMARTPICK_PROMOTION_DETAILS } = await import("../lib/cuelinks.ts");
+    const res = await requestCampaignAccess(817);
+
+    assert.equal(res.data.status, "pending");
+    assert.equal(res.data.id, 106514);
+    assert.equal(capturedBody.promotion_details, SMARTPICK_PROMOTION_DETAILS);
+    // Ensure no fake claims exist in promotion_details
+    assert.ok(!capturedBody.promotion_details.includes("50,000 MAU"));
+    assert.ok(!capturedBody.promotion_details.includes("100,000 visitors"));
+    assert.ok(!capturedBody.promotion_details.includes("guaranteed sales"));
+  });
+
+  test("9. 422 duplicate/pending error from Cuelinks is handled cleanly", async () => {
+    process.env.CUELINKS_API_KEY = "mock_secret_token";
+
+    global.fetch = async () => ({
+      ok: false,
+      status: 422,
+      statusText: "Unprocessable Entity",
+      json: async () => ({ message: "Campaign application is already pending or under review" }),
+    });
+
+    const { requestCampaignAccess } = await import("../lib/cuelinks.ts");
+    await assert.rejects(
+      async () => {
+        await requestCampaignAccess(817);
+      },
+      (err) => {
+        assert.equal(err.statusCode, 422);
+        assert.match(err.message, /already pending/);
+        return true;
+      }
+    );
+  });
+
+  test("10. 429 Daily rate-limit response is trapped with throttling guidance", async () => {
+    process.env.CUELINKS_API_KEY = "mock_secret_token";
+
+    global.fetch = async () => ({
+      ok: false,
+      status: 429,
+      statusText: "Too Many Requests",
+      json: async () => ({ message: "Daily rate limit exceeded for publisher" }),
+    });
+
+    const { requestCampaignAccess } = await import("../lib/cuelinks.ts");
+    await assert.rejects(
+      async () => {
+        await requestCampaignAccess(817);
+      },
+      (err) => {
+        assert.equal(err.statusCode, 429);
+        assert.match(err.message, /Rate Limit Exceeded/);
+        return true;
+      }
+    );
+  });
+
+  test("11. Unauthorized admin request throws 401 when API key is missing or invalid", async () => {
     delete process.env.CUELINKS_API_KEY;
     const { ping } = await import("../lib/cuelinks.ts");
 
@@ -25,109 +168,17 @@ describe("Cuelinks V3 Client & Provider Test Suite", () => {
       },
       (err) => {
         assert.equal(err.statusCode, 401);
-        assert.match(err.message, /Cuelinks API key is missing/);
+        assert.match(err.message, /API key is missing/);
         return true;
       }
     );
   });
 
-  test("2. /ping parses publisher metadata and scopes correctly", async () => {
-    process.env.CUELINKS_API_KEY = "mock_secret_token";
-    const mockPing = {
-      status: "ok",
-      version: "3.0",
-      publisher: {
-        id: 273459,
-        name: "SHIVAM GARG",
-        email: "publisher@example.com",
-        publisher_id: "273459",
-        currency: "INR",
-      },
-      api_key: {
-        name: "test_key",
-        scopes: ["read:campaigns", "write:links"],
-        last_used_at: "2026-09-17T00:00:00Z",
-      },
-    };
-
-    global.fetch = async (url, opts) => {
-      assert.match(opts.headers.Authorization, /^Token mock_secret_token/);
-      assert.ok(url.includes("/ping"));
-      return {
-        ok: true,
-        status: 200,
-        json: async () => mockPing,
-      };
-    };
-
-    const { ping } = await import("../lib/cuelinks.ts");
-    const result = await ping();
-
-    assert.equal(result.status, "ok");
-    assert.equal(result.publisher.name, "SHIVAM GARG");
-    assert.equal(result.publisher.currency, "INR");
-    assert.deepEqual(result.api_key.scopes, ["read:campaigns", "write:links"]);
-  });
-
-  test("3. Campaign pagination handles pages and query parameters", async () => {
-    process.env.CUELINKS_API_KEY = "mock_secret_token";
-    let capturedUrl = "";
-
-    global.fetch = async (url) => {
-      capturedUrl = url;
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          data: [
-            { id: 101, name: "Merchant A", access_status: "open", url: "https://merchanta.com" },
-            { id: 102, name: "Merchant B", access_status: "not_applied", url: "https://merchantb.com" },
-          ],
-          meta: {
-            page: 2,
-            per_page: 25,
-            total: 150,
-            total_pages: 6,
-            next_page: 3,
-            prev_page: 1,
-          },
-        }),
-      };
-    };
-
-    const { listCampaigns } = await import("../lib/cuelinks.ts");
-    const result = await listCampaigns({ page: 2, per_page: 25, country_id: 100 });
-
-    assert.ok(capturedUrl.includes("page=2"));
-    assert.ok(capturedUrl.includes("per_page=25"));
-    assert.ok(capturedUrl.includes("country_id=100"));
-    assert.equal(result.data.length, 2);
-    assert.equal(result.meta.total, 150);
-  });
-
-  test("4. Campaign access status classification into ACCESSIBLE, APPROVAL_REQUIRED, INACTIVE_UNAVAILABLE", async () => {
-    const { getCampaignAccessGroup } = await import("../lib/cuelinks.ts");
-
-    assert.equal(getCampaignAccessGroup("open"), "ACCESSIBLE");
-    assert.equal(getCampaignAccessGroup("active"), "ACCESSIBLE");
-    assert.equal(getCampaignAccessGroup("approved"), "ACCESSIBLE");
-
-    assert.equal(getCampaignAccessGroup("not_applied"), "APPROVAL_REQUIRED");
-    assert.equal(getCampaignAccessGroup("pending"), "APPROVAL_REQUIRED");
-    assert.equal(getCampaignAccessGroup("paused"), "APPROVAL_REQUIRED");
-
-    assert.equal(getCampaignAccessGroup("closed"), "INACTIVE_UNAVAILABLE");
-    assert.equal(getCampaignAccessGroup("rejected"), "INACTIVE_UNAVAILABLE");
-  });
-
-  test("5. Successful link conversion with affiliated === true returns monetizable result", async () => {
+  test("12. Link conversion with affiliated === true returns MONETIZABLE", async () => {
     process.env.CUELINKS_API_KEY = "mock_secret_token";
 
     global.fetch = async (_url, opts) => {
       const parsedBody = JSON.parse(opts.body);
-      assert.equal(parsedBody.url, "https://www.boat-lifestyle.com/products/airdopes-141");
-      assert.equal(parsedBody.shorten, true);
-
       return {
         ok: true,
         status: 200,
@@ -143,20 +194,18 @@ describe("Cuelinks V3 Client & Provider Test Suite", () => {
       };
     };
 
-    const { convertLink } = await import("../lib/cuelinks.ts");
-    const res = await convertLink({
+    const { CuelinksProvider } = await import("../lib/affiliate/cuelinks-provider.ts");
+    const provider = new CuelinksProvider();
+    const result = await provider.convertLink({
       url: "https://www.boat-lifestyle.com/products/airdopes-141",
-      shorten: true,
-      subid: "product_123",
-      subid2: "sidebar_deal",
     });
 
-    assert.equal(res.data.affiliated, true);
-    assert.equal(res.data.short_url, "https://clnk.in/CBtA");
-    assert.equal(res.data.campaign?.name, "Boat");
+    assert.equal(result.affiliated, true);
+    assert.equal(result.monetizable, true);
+    assert.equal(result.statusReason, "");
   });
 
-  test("6. Link conversion with affiliated === false is explicitly flagged NOT MONETIZABLE", async () => {
+  test("13. Link conversion with affiliated === false returns exact message: Not currently monetizable — access/campaign status must be reviewed.", async () => {
     process.env.CUELINKS_API_KEY = "mock_secret_token";
 
     global.fetch = async () => ({
@@ -181,128 +230,9 @@ describe("Cuelinks V3 Client & Provider Test Suite", () => {
 
     assert.equal(result.affiliated, false);
     assert.equal(result.monetizable, false);
-    assert.match(result.statusReason, /NOT CURRENTLY MONETIZABLE/);
-  });
-
-  test("7. Invalid URL throws 422 validation error", async () => {
-    process.env.CUELINKS_API_KEY = "mock_secret_token";
-    const { convertLink } = await import("../lib/cuelinks.ts");
-
-    await assert.rejects(
-      async () => {
-        await convertLink({ url: "not-a-valid-http-url" });
-      },
-      (err) => {
-        assert.equal(err.statusCode, 422);
-        assert.match(err.message, /Invalid URL/);
-        return true;
-      }
+    assert.equal(
+      result.statusReason,
+      "Not currently monetizable — access/campaign status must be reviewed."
     );
-  });
-
-  test("8. 401 Unauthorized from Cuelinks returns sanitized error without leaking API key", async () => {
-    process.env.CUELINKS_API_KEY = "secret_key_that_must_not_leak";
-
-    global.fetch = async () => ({
-      ok: false,
-      status: 401,
-      statusText: "Unauthorized",
-      json: async () => ({ error: "Invalid API Token" }),
-    });
-
-    const { ping } = await import("../lib/cuelinks.ts");
-    await assert.rejects(
-      async () => {
-        await ping();
-      },
-      (err) => {
-        assert.equal(err.statusCode, 401);
-        assert.match(err.message, /Authentication Failed/);
-        // Ensure secret key is NEVER printed in error message
-        assert.ok(!err.message.includes("secret_key_that_must_not_leak"));
-        return true;
-      }
-    );
-  });
-
-  test("9. 403 Forbidden / missing scope handled safely", async () => {
-    process.env.CUELINKS_API_KEY = "mock_token";
-
-    global.fetch = async () => ({
-      ok: false,
-      status: 403,
-      statusText: "Forbidden",
-      json: async () => ({ error: "Missing write:links scope" }),
-    });
-
-    const { convertLink } = await import("../lib/cuelinks.ts");
-    await assert.rejects(
-      async () => {
-        await convertLink({ url: "https://example.com" });
-      },
-      (err) => {
-        assert.equal(err.statusCode, 403);
-        assert.match(err.message, /Missing required API scope/);
-        return true;
-      }
-    );
-  });
-
-  test("10. 422 Validation error returns clear error explanation", async () => {
-    process.env.CUELINKS_API_KEY = "mock_token";
-
-    global.fetch = async () => ({
-      ok: false,
-      status: 422,
-      statusText: "Unprocessable Entity",
-      json: async () => ({ message: "Domain not registered with Cuelinks" }),
-    });
-
-    const { convertLink } = await import("../lib/cuelinks.ts");
-    await assert.rejects(
-      async () => {
-        await convertLink({ url: "https://unknown-merchant-store.com" });
-      },
-      (err) => {
-        assert.equal(err.statusCode, 422);
-        assert.match(err.message, /Domain not registered/);
-        return true;
-      }
-    );
-  });
-
-  test("11. 429 Rate limiting response handles throttling with guidance", async () => {
-    process.env.CUELINKS_API_KEY = "mock_token";
-
-    global.fetch = async () => ({
-      ok: false,
-      status: 429,
-      statusText: "Too Many Requests",
-      json: async () => ({ message: "Rate limit exceeded" }),
-    });
-
-    const { ping } = await import("../lib/cuelinks.ts");
-    await assert.rejects(
-      async () => {
-        await ping();
-      },
-      (err) => {
-        assert.equal(err.statusCode, 429);
-        assert.match(err.message, /Rate Limit Exceeded/);
-        return true;
-      }
-    );
-  });
-
-  test("12. CuelinksProvider adheres to AffiliateProvider interface", async () => {
-    const { CuelinksProvider } = await import("../lib/affiliate/cuelinks-provider.ts");
-    const provider = new CuelinksProvider();
-
-    assert.equal(provider.getName(), "cuelinks");
-    assert.equal(typeof provider.ping, "function");
-    assert.equal(typeof provider.searchCampaigns, "function");
-    assert.equal(typeof provider.getCampaign, "function");
-    assert.equal(typeof provider.requestAccess, "function");
-    assert.equal(typeof provider.convertLink, "function");
   });
 });

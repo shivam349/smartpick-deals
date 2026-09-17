@@ -12,6 +12,13 @@
 
 export type CampaignAccessGroup = "ACCESSIBLE" | "APPROVAL_REQUIRED" | "INACTIVE_UNAVAILABLE";
 
+/** Canonical SmartPick live website URL for all Cuelinks applications */
+export const SMARTPICK_WEBSITE_URL = "https://smartpick-dealss.vercel.app/";
+
+/** Exact verified promotion details submitted for Cuelinks campaign access applications */
+export const SMARTPICK_PROMOTION_DETAILS =
+  "SmartPick (https://smartpick-dealss.vercel.app/) is a technology and shopping-content website focused on product recommendations, buying guides, product comparisons, electronics, gadgets and relevant e-commerce offers. I plan to promote this campaign through original SEO-focused content and relevant product recommendations for users researching products before purchase. I will use compliant affiliate links and follow the campaign's traffic-source and promotional rules.";
+
 const CUELINKS_V3_BASE_URL = "https://developers.cuelinks.com/pub_api/v3";
 
 export interface CuelinksPublisher {
@@ -173,6 +180,65 @@ export function getCampaignAccessGroup(accessStatus: string): CampaignAccessGrou
     return "APPROVAL_REQUIRED";
   }
   return "INACTIVE_UNAVAILABLE";
+}
+
+/**
+ * Validates whether a campaign is currently eligible for an access request.
+ * Rule: Only allow request when access_status === "not_applied".
+ * Do NOT request access for open, approved, pending, paused, or blocked.
+ */
+export function canRequestAccess(accessStatus: string): { allowed: boolean; reason: string } {
+  const status = (accessStatus || "").toLowerCase().trim();
+
+  if (status === "not_applied") {
+    return { allowed: true, reason: "Eligible to request access." };
+  }
+  if (status === "open") {
+    return { allowed: false, reason: "Open campaign: Instant access already active, no application required." };
+  }
+  if (status === "approved" || status === "active") {
+    return { allowed: false, reason: "Campaign is already approved for your publisher account." };
+  }
+  if (status === "pending") {
+    return { allowed: false, reason: "Pending — waiting for approval from merchant." };
+  }
+  if (status === "paused") {
+    return { allowed: false, reason: "Paused — applications are currently unavailable." };
+  }
+  if (status === "rejected") {
+    return { allowed: false, reason: "Rejected — application was declined by merchant." };
+  }
+  if (status === "blocked") {
+    return { allowed: false, reason: "Blocked — publisher access restricted." };
+  }
+
+  return { allowed: false, reason: `Access status '${accessStatus}' is not eligible for application.` };
+}
+
+/**
+ * Returns user-friendly status description adhering to Cuelinks guidelines
+ */
+export function getCampaignAccessLabel(accessStatus: string, cooldownDate?: string): string {
+  const status = (accessStatus || "").toLowerCase().trim();
+  switch (status) {
+    case "open":
+      return "Open";
+    case "approved":
+    case "active":
+      return "Approved";
+    case "pending":
+      return "Pending — waiting for approval";
+    case "not_applied":
+      return "Not Applied";
+    case "paused":
+      return "Paused — applications unavailable";
+    case "rejected":
+      return cooldownDate ? `Rejected (Cooldown until ${cooldownDate})` : "Rejected";
+    case "blocked":
+      return "Blocked";
+    default:
+      return accessStatus || "Unknown";
+  }
 }
 
 /**
@@ -356,16 +422,33 @@ export async function getCampaign(
   return cuelinksFetch<{ data: CuelinksCampaign }>(`/campaigns/${id}`);
 }
 
+export interface RequestAccessOptions {
+  promotion_details?: string;
+  channel_id?: number | string;
+}
+
 /**
  * Request access to a restricted campaign: POST /campaigns/:id/request_access
+ * 
+ * Uses exact verified SmartPick promotion statement and respects optional channel_id.
  */
 export async function requestCampaignAccess(
-  id: number | string
+  id: number | string,
+  options: RequestAccessOptions = {}
 ): Promise<CuelinksRequestAccessResponse> {
+  const body: Record<string, any> = {
+    promotion_details: options.promotion_details || SMARTPICK_PROMOTION_DETAILS,
+  };
+
+  if (options.channel_id) {
+    body.channel_id = options.channel_id;
+  }
+
   return cuelinksFetch<CuelinksRequestAccessResponse>(
     `/campaigns/${id}/request_access`,
     {
       method: "POST",
+      body,
     }
   );
 }

@@ -82,7 +82,16 @@ export interface AffiliateProvider {
     page: number;
   }>;
   getCampaign(id: number | string): Promise<AffiliateCampaign | null>;
-  requestAccess(id: number | string): Promise<{ success: boolean; status: string; id?: number; message?: string }>;
+  requestAccess(
+    id: number | string,
+    options?: { promotion_details?: string; channel_id?: number | string }
+  ): Promise<{
+    success: boolean;
+    status: string;
+    id?: number;
+    channelId?: number;
+    message?: string;
+  }>;
   convertLink(options: {
     url: string;
     shorten?: boolean;

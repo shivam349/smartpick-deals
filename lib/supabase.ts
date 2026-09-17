@@ -266,3 +266,52 @@ export async function getAffiliateLinks(limit = 50): Promise<any[]> {
   }
 }
 
+export async function recordAccessRequest(data: {
+  requestId?: number | null;
+  campaignId: number;
+  channelId?: number | null;
+  promotionDetails: string;
+  requestStatus?: string;
+}): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("affiliate_access_requests").insert([
+      {
+        request_id: data.requestId || null,
+        campaign_id: data.campaignId,
+        channel_id: data.channelId || null,
+        promotion_details: data.promotionDetails,
+        request_status: data.requestStatus || "pending",
+        created_at: new Date().toISOString(),
+      },
+    ]);
+    if (error) throw error;
+
+    // Update corresponding campaign access_status to pending in affiliate_campaigns
+    await supabase
+      .from("affiliate_campaigns")
+      .update({ access_status: "pending", last_checked_at: new Date().toISOString() })
+      .eq("external_campaign_id", data.campaignId);
+
+    return true;
+  } catch (err) {
+    console.error("Error recording access request in Supabase:", err);
+    return false;
+  }
+}
+
+export async function getAccessRequests(limit = 50): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from("affiliate_access_requests")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error("Error fetching access requests from Supabase:", err);
+    return [];
+  }
+}
+
+
