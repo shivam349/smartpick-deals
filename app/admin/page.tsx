@@ -122,6 +122,12 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link href="/admin/cuelinks">
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Cuelinks V3 Hub</span>
+            </Button>
+          </Link>
           <Link href="/">
             <Button size="sm" variant="outline">Preview Live Site</Button>
           </Link>
