@@ -51,7 +51,7 @@ export default async function GuidesIndexPage({
     return true;
   });
 
-  const categories = ["All", "Keyboards", "Mice", "Monitors", "Desk Setup", "Headphones", "Productivity"];
+  const categories = ["All", "Audio", "Keyboards", "Mice", "Monitors", "Desk Setup", "Headphones", "Productivity"];
   const featuredArticle: any = filteredArticles[0] || LOCAL_ARTICLES[0];
   const gridArticles = filteredArticles.length > 1 ? filteredArticles.slice(1) : filteredArticles;
 

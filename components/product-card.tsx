@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Star, Award, ChevronRight, Check } from "lucide-react";
 import { Product } from "@/lib/types";
 import { ProductImage } from "@/components/product-image";
+import { formatPrice } from "@/lib/utils";
 
 interface ProductCardProps {
   product: Product;
@@ -82,7 +83,9 @@ export function ProductCard({ product, rank }: ProductCardProps) {
           <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
             Verified Price
           </span>
-          <span className="text-lg font-black text-slate-900">{product.price}</span>
+          <span className="text-lg font-black text-slate-900">
+            {formatPrice(product.price, product.currency) || "Check Store"}
+          </span>
         </div>
 
         <Link

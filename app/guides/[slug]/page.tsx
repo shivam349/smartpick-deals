@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { JsonLd, generateArticleSchema } from "@/components/json-ld";
 import { ProductImage } from "@/components/product-image";
 import { ReviewerMascot } from "@/components/mascot";
+import { formatPrice } from "@/lib/utils";
 
 export const revalidate = 60;
 
@@ -409,7 +410,7 @@ export default async function GuideDetailPage({
                         {prod.name}
                       </h4>
                       <div className="text-sm font-black text-slate-900 mt-1.5">
-                        {prod.price}
+                        {formatPrice(prod.price, prod.currency) || "Check Store"}
                       </div>
                     </div>
                     <Link

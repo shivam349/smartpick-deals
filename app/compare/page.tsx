@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { Swords, ArrowRight, Award } from "lucide-react";
 import { getProducts } from "@/lib/supabase";
+import { LOCAL_PRODUCTS } from "@/lib/catalog-data";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
@@ -27,15 +28,32 @@ export const metadata: Metadata = {
 };
 
 export default async function CompareIndexPage() {
-  const products = await getProducts(12);
+  const dbProducts = await getProducts(12);
+  const candidateProducts =
+    dbProducts.length > 0
+      ? [...dbProducts, ...LOCAL_PRODUCTS.filter((lp) => !dbProducts.some((dp) => dp.slug === lp.slug))]
+      : LOCAL_PRODUCTS;
 
-  // Generate comparison pairs from catalog
+  // Generate comparison pairs from catalog with BoAt Earbuds showdown prioritized
   const pairs = [];
-  for (let i = 0; i < products.length - 1; i += 2) {
+  const boatProd = candidateProducts.find((p) => p.slug === "boat-airdopes-141");
+  const noiseProd = candidateProducts.find((p) => p.slug === "noise-buds-vs104");
+  if (boatProd && noiseProd) {
     pairs.push({
-      prodA: products[i],
-      prodB: products[i + 1],
-      slug: `${products[i].slug}-vs-${products[i + 1].slug}`,
+      prodA: boatProd,
+      prodB: noiseProd,
+      slug: `${boatProd.slug}-vs-${noiseProd.slug}`,
+    });
+  }
+
+  const remaining = candidateProducts.filter(
+    (p) => p.slug !== "boat-airdopes-141" && p.slug !== "noise-buds-vs104"
+  );
+  for (let i = 0; i < remaining.length - 1; i += 2) {
+    pairs.push({
+      prodA: remaining[i],
+      prodB: remaining[i + 1],
+      slug: `${remaining[i].slug}-vs-${remaining[i + 1].slug}`,
     });
   }
 

@@ -3,22 +3,35 @@ import Link from "next/link";
 import { Star, ExternalLink, ArrowRight } from "lucide-react";
 import { Product } from "@/lib/types";
 import { ProductImage } from "@/components/product-image";
+import { formatPrice, calculateDiscount } from "@/lib/utils";
 
 interface DealCardProps {
   product: Product;
 }
 
 export function DealCard({ product }: DealCardProps) {
-  const discount = product.discount_percent || 15;
+  const discount =
+    product.discount_percent ||
+    (product.price && product.old_price ? calculateDiscount(product.price, product.old_price) : 0);
+
+  const formattedPrice = formatPrice(product.price, product.currency);
+  const formattedOldPrice = formatPrice(product.old_price, product.currency);
+  const redirectUrl = `/api/redirect?product=${encodeURIComponent(product.slug || product.id || "")}`;
 
   return (
     <article className="editorial-card p-4 flex flex-col justify-between group">
       <div>
         {/* Card Header / Badges */}
         <div className="flex items-center justify-between gap-2 mb-3">
-          <span className="deal-pill">
-            {discount}% OFF
-          </span>
+          {discount > 0 ? (
+            <span className="deal-pill">
+              {discount}% OFF
+            </span>
+          ) : (
+            <span className="deal-pill">
+              VERIFIED DEAL
+            </span>
+          )}
           {product.merchant && (
             <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
               {product.merchant}
@@ -51,23 +64,29 @@ export function DealCard({ product }: DealCardProps) {
         </Link>
 
         {/* Verified Rating */}
-        <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-600">
-          <div className="flex items-center text-amber-500">
-            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-            <span className="ml-1 font-bold text-slate-900">{product.rating}</span>
+        {product.rating ? (
+          <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-600">
+            <div className="flex items-center text-amber-500">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+              <span className="ml-1 font-bold text-slate-900">{product.rating}</span>
+            </div>
+            {product.review_count ? (
+              <>
+                <span>•</span>
+                <span className="text-slate-500 text-[11px]">({product.review_count.toLocaleString()} ratings)</span>
+              </>
+            ) : null}
           </div>
-          <span>•</span>
-          <span className="text-slate-500 text-[11px]">({product.review_count?.toLocaleString()} ratings)</span>
-        </div>
+        ) : null}
 
         {/* Price Row */}
         <div className="flex items-baseline gap-2 mt-3">
           <strong className="text-lg font-black text-slate-900">
-            {product.price}
+            {formattedPrice || "Check Price"}
           </strong>
-          {product.old_price && (
+          {formattedOldPrice && (
             <del className="text-xs text-slate-400 font-medium">
-              {product.old_price}
+              {formattedOldPrice}
             </del>
           )}
         </div>
@@ -89,7 +108,7 @@ export function DealCard({ product }: DealCardProps) {
         </Link>
 
         <a
-          href={product.affiliate_url || product.source_url}
+          href={redirectUrl}
           target="_blank"
           rel="nofollow sponsored"
           className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-md bg-amber-600 text-white hover:bg-amber-700 transition shadow-sm"

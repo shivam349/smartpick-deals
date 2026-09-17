@@ -16,6 +16,7 @@ import { LOCAL_PRODUCTS } from "@/lib/catalog-data";
 import { Button } from "@/components/ui/button";
 import { JsonLd, generateProductSchema } from "@/components/json-ld";
 import { ProductImage } from "@/components/product-image";
+import { formatPrice } from "@/lib/utils";
 
 export const revalidate = 60;
 
@@ -173,12 +174,12 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
                 {product.price ? (
                   <>
                     <span className="text-3xl font-black text-slate-900">
-                      {typeof product.price === "number"
-                        ? `${product.currency === "INR" || !product.currency ? "₹" : product.currency + " "}${product.price.toLocaleString("en-IN")}`
-                        : product.price}
+                      {formatPrice(product.price, product.currency)}
                     </span>
                     {product.old_price && (
-                      <span className="text-sm text-slate-400 line-through font-medium">{product.old_price}</span>
+                      <span className="text-sm text-slate-400 line-through font-medium">
+                        {formatPrice(product.old_price, product.currency)}
+                      </span>
                     )}
                   </>
                 ) : (

@@ -31,8 +31,8 @@ export default async function HomePage() {
   const featuredDeal = deals.length > 0 ? deals[0] : products[0] || null;
 
   // Products for side-by-side comparison feature
-  const compareProdA = products.find((p) => p.slug.includes("keychron")) || products[0];
-  const compareProdB = products.find((p) => p.slug.includes("mx-mechanical")) || products[1];
+  const compareProdA = products.find((p) => p.slug.includes("boat")) || products.find((p) => p.slug.includes("keychron")) || products[0];
+  const compareProdB = products.find((p) => p.slug.includes("noise")) || products.find((p) => p.slug.includes("mx-mechanical")) || products[1];
 
   return (
     <div className="space-y-0">

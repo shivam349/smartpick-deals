@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { Check, ArrowRight, Award } from "lucide-react";
 import { Product } from "@/lib/types";
+import { formatPrice } from "@/lib/utils";
 
 interface ComparisonFeatureProps {
   productA?: Product | null;
@@ -9,20 +10,22 @@ interface ComparisonFeatureProps {
 }
 
 export function ComparisonFeature({ productA, productB }: ComparisonFeatureProps) {
-  const prodA = productA || {
+  const prodA: Partial<Product> = productA || {
     name: "Logitech MX Master 3S",
     slug: "logitech-mx-master-3s",
     rating: 4.8,
     price: "$99.99",
     score: 94,
+    currency: "USD",
   };
 
-  const prodB = productB || {
+  const prodB: Partial<Product> = productB || {
     name: "Razer Pro Click Wireless",
     slug: "razer-pro-click-wireless",
     rating: 4.5,
     price: "$79.99",
     score: 87,
+    currency: "USD",
   };
 
   const winner = (prodA.score ?? 0) >= (prodB.score ?? 0) ? prodA : prodB;
@@ -74,7 +77,7 @@ export function ComparisonFeature({ productA, productB }: ComparisonFeatureProps
                     ★ {prodA.rating}
                   </div>
                   <div className="text-right font-black text-slate-900">
-                    {prodA.price}
+                    {formatPrice(prodA.price, prodA.currency) || "Check Store"}
                   </div>
                 </div>
 
@@ -87,7 +90,7 @@ export function ComparisonFeature({ productA, productB }: ComparisonFeatureProps
                     ★ {prodB.rating}
                   </div>
                   <div className="text-right font-black text-slate-900">
-                    {prodB.price}
+                    {formatPrice(prodB.price, prodB.currency) || "Check Store"}
                   </div>
                 </div>
 

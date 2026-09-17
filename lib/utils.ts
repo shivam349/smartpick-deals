@@ -5,17 +5,26 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(price: string | number): string {
-  if (typeof price === "number") {
-    return `$${price.toFixed(2)}`;
+export function formatPrice(price: string | number | null | undefined, currency?: string | null): string {
+  if (price === null || price === undefined || price === "") return "";
+  const str = String(price).trim();
+  if (str.startsWith("₹") || str.startsWith("$") || str.startsWith("€") || str.startsWith("£")) {
+    return str;
   }
-  if (!price) return "$0.00";
-  return price.startsWith("$") ? price : `$${price}`;
+  const isINR = currency === "INR" || /^(?:₹|INR)/i.test(str);
+  const num = typeof price === "number" ? price : parseFloat(str.replace(/[^0-9.]/g, ""));
+  if (!isNaN(num)) {
+    if (isINR) {
+      return `₹${num.toLocaleString("en-IN")}`;
+    }
+    return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  }
+  return isINR ? `₹${str}` : `$${str}`;
 }
 
-export function calculateDiscount(price: string, oldPrice: string): number {
-  const p = parseFloat(price.replace(/[^0-9.]/g, ""));
-  const op = parseFloat(oldPrice.replace(/[^0-9.]/g, ""));
+export function calculateDiscount(price: string | number, oldPrice: string | number): number {
+  const p = typeof price === "number" ? price : parseFloat(String(price).replace(/[^0-9.]/g, ""));
+  const op = typeof oldPrice === "number" ? oldPrice : parseFloat(String(oldPrice).replace(/[^0-9.]/g, ""));
   if (isNaN(p) || isNaN(op) || op <= p) return 0;
   return Math.round(((op - p) / op) * 100);
 }
