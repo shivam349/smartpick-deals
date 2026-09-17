@@ -50,31 +50,44 @@ export function generateProductSchema(product: {
   name: string;
   image_url: string;
   description: string;
-  price: string;
-  rating?: number;
-  review_count?: number;
-  merchant?: string;
+  price?: string | number | null;
+  currency?: string | null;
+  rating?: number | null;
+  review_count?: number | null;
+  merchant?: string | null;
   slug: string;
 }) {
-  const numericPrice = parseFloat(product.price.replace(/[^0-9.]/g, "")) || 0;
-
   const schema: Record<string, any> = {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": product.name,
     "image": [product.image_url],
     "description": product.description,
-    "offers": {
-      "@type": "Offer",
-      "price": numericPrice,
-      "priceCurrency": "USD",
-      "availability": "https://schema.org/InStock",
-      "seller": {
-        "@type": "Organization",
-        "name": product.merchant || "Verified Merchant"
-      }
-    }
   };
+
+  if (product.merchant) {
+    schema.brand = {
+      "@type": "Brand",
+      "name": product.merchant,
+    };
+  }
+
+  // Only include offer if verified price is present
+  if (product.price) {
+    const rawPrice = typeof product.price === "number" ? product.price : parseFloat(String(product.price).replace(/[^0-9.]/g, ""));
+    if (!isNaN(rawPrice) && rawPrice > 0) {
+      schema.offers = {
+        "@type": "Offer",
+        "price": rawPrice,
+        "priceCurrency": product.currency || "INR",
+        "availability": "https://schema.org/InStock",
+        "seller": {
+          "@type": "Organization",
+          "name": product.merchant || "BoAt"
+        }
+      };
+    }
+  }
 
   // Only include AggregateRating if legitimate verified ratings exist
   if (product.rating && product.rating > 0 && product.review_count && product.review_count > 0) {

@@ -25,7 +25,7 @@ export function ComparisonFeature({ productA, productB }: ComparisonFeatureProps
     score: 87,
   };
 
-  const winner = prodA.score >= prodB.score ? prodA : prodB;
+  const winner = (prodA.score ?? 0) >= (prodB.score ?? 0) ? prodA : prodB;
   const compareSlug = `${prodA.slug}-vs-${prodB.slug}`;
 
   return (

@@ -86,7 +86,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
     "Specific ergonomic profile may require a brief adaptation period"
   ];
 
-  const discount = product.discount_percent || 15;
+  const discount = product.discount_percent;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
@@ -133,7 +133,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
               <span className="text-xs font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full">
                 {product.category}
               </span>
-              {product.is_deal && (
+              {product.is_deal && discount && (
                 <span className="deal-pill">
                   {discount}% OFF
                 </span>
@@ -144,44 +144,65 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
               {product.name}
             </h1>
 
-            {/* Ratings & Score */}
-            <div className="flex items-center gap-4 mt-3">
-              <div className="flex items-center text-amber-500">
-                <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
-                <span className="ml-1 font-bold text-slate-900 text-sm">{product.rating}</span>
-                <span className="ml-1 text-xs text-slate-500">({product.review_count?.toLocaleString()} ratings)</span>
+            {/* Ratings & Score (Only if verified) */}
+            {(product.rating && product.rating > 0) ? (
+              <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center text-amber-500">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
+                  <span className="ml-1 font-bold text-slate-900 text-sm">{product.rating}</span>
+                  {product.review_count && product.review_count > 0 && (
+                    <span className="ml-1 text-xs text-slate-500">({product.review_count.toLocaleString()} ratings)</span>
+                  )}
+                </div>
+                {typeof product.score === "number" && product.score > 0 && (
+                  <div className="text-xs bg-indigo-50 text-indigo-800 px-2.5 py-1 rounded-full font-bold border border-indigo-200/80">
+                    Editorial Score: {Math.round(product.score)}/100
+                  </div>
+                )}
               </div>
-              <div className="text-xs bg-indigo-50 text-indigo-800 px-2.5 py-1 rounded-full font-bold border border-indigo-200/80">
-                Editorial Score: {Math.round(product.score)}/100
-              </div>
-            </div>
+            ) : null}
           </div>
 
-          {/* Pricing Box */}
+          {/* Pricing & Buy CTA Box */}
           <div className="p-5 rounded-xl border border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
             <div>
               <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
-                Verified Retail Price
+                {product.price ? "Verified Retail Price" : "Storefront Availability"}
               </div>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-3xl font-black text-slate-900">{product.price}</span>
-                {product.old_price && (
-                  <span className="text-sm text-slate-400 line-through font-medium">{product.old_price}</span>
+                {product.price ? (
+                  <>
+                    <span className="text-3xl font-black text-slate-900">
+                      {typeof product.price === "number"
+                        ? `${product.currency === "INR" || !product.currency ? "₹" : product.currency + " "}${product.price.toLocaleString("en-IN")}`
+                        : product.price}
+                    </span>
+                    {product.old_price && (
+                      <span className="text-sm text-slate-400 line-through font-medium">{product.old_price}</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-base font-semibold text-slate-700">Check latest price on store</span>
                 )}
               </div>
             </div>
 
             <a
-              href={product.affiliate_url || product.source_url}
+              href={`/api/redirect?product=${encodeURIComponent(product.slug || product.id || "")}`}
               target="_blank"
               rel="nofollow sponsored"
             >
               <Button size="lg" className="w-full sm:w-auto gap-2 font-bold px-6 bg-amber-600 hover:bg-amber-700 text-white shadow-sm">
-                <span>Check Price at {product.merchant}</span>
+                <span>Buy on {product.merchant || "BoAt"}</span>
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </a>
           </div>
+
+          {/* Affiliate Disclosure */}
+          <p className="text-xs text-slate-500 italic bg-slate-50 border border-slate-200/60 rounded-lg p-2.5">
+            SmartPick may earn a commission when you purchase through our links.
+          </p>
 
           {/* Editorial Summary */}
           <div className="space-y-2">

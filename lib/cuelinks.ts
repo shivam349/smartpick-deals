@@ -502,3 +502,60 @@ export function getAffiliateUrl(
 
   return originalMerchantUrl;
 }
+
+/**
+ * Server-side affiliate link verification function (Section 12)
+ * Validates that Cuelinks returns affiliated === true and timestamps verification.
+ */
+export async function verifyAffiliateLink(
+  url: string,
+  options: { subid?: string; subid2?: string; campaignId?: number } = {}
+): Promise<{
+  verified: boolean;
+  affiliated: boolean;
+  monetizable: boolean;
+  trackingUrl: string;
+  shortUrl?: string;
+  campaignId?: number;
+  campaignName?: string;
+  statusReason: string;
+  lastVerifiedAt: string;
+}> {
+  try {
+    const res = await convertLink({
+      url,
+      shorten: true,
+      subid: options.subid,
+      subid2: options.subid2,
+    });
+
+    const isAffiliated = Boolean(res.data.affiliated);
+    const statusReason = isAffiliated
+      ? "Monetizable: Active publisher permissions verified"
+      : "Not currently monetizable — access/campaign status must be reviewed.";
+
+    return {
+      verified: true,
+      affiliated: isAffiliated,
+      monetizable: isAffiliated,
+      trackingUrl: res.data.tracking_url || res.data.affiliate_url || "",
+      shortUrl: res.data.short_url || res.data.shorten_url,
+      campaignId: res.data.campaign?.id || options.campaignId,
+      campaignName: res.data.campaign?.name,
+      statusReason,
+      lastVerifiedAt: new Date().toISOString(),
+    };
+  } catch (err: any) {
+    return {
+      verified: false,
+      affiliated: false,
+      monetizable: false,
+      trackingUrl: "",
+      shortUrl: undefined,
+      campaignId: options.campaignId,
+      statusReason: `Verification failed: ${err.message}`,
+      lastVerifiedAt: new Date().toISOString(),
+    };
+  }
+}
+

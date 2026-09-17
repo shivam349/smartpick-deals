@@ -156,12 +156,65 @@ export default function CuelinksAdminDashboard() {
   const [convertError, setConvertError] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  // BoAt Dedicated Product Ingestion State
+  const [boatUrl, setBoatUrl] = useState("https://www.boat-lifestyle.com/products/airdopes-141");
+  const [boatSlug, setBoatSlug] = useState("boat-airdopes-141");
+  const [boatTitle, setBoatTitle] = useState("BoAt Airdopes 141 True Wireless Earbuds");
+  const [boatImageUrl, setBoatImageUrl] = useState("");
+  const [boatDescription, setBoatDescription] = useState("BoAt Airdopes 141 wireless earbuds with up to 42 hours total playback, ENx Environmental Noise Cancellation technology, and ASAP Fast Charge.");
+  const [boatPrice, setBoatPrice] = useState("1499");
+  const [boatCategory, setBoatCategory] = useState("Audio");
+  const [boatSubId, setBoatSubId] = useState("boat-airdopes-141");
+  const [boatSubId2, setBoatSubId2] = useState("smartpick_product_page");
+  const [creatingBoatProduct, setCreatingBoatProduct] = useState(false);
+  const [boatProductResult, setBoatProductResult] = useState<any>(null);
+  const [boatProductError, setBoatProductError] = useState<string | null>(null);
+
   // Batch Test State
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchSummary, setBatchSummary] = useState<BatchTestSummary | null>(null);
 
   // Notifications
   const [notice, setNotice] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
+
+  const handleCreateBoatProduct = async () => {
+    setCreatingBoatProduct(true);
+    setBoatProductError(null);
+    setBoatProductResult(null);
+
+    try {
+      const res = await fetch("/api/admin/cuelinks/product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: boatUrl,
+          slug: boatSlug,
+          title: boatTitle,
+          imageUrl: boatImageUrl || undefined,
+          description: boatDescription || undefined,
+          price: boatPrice ? Number(boatPrice) : null,
+          category: boatCategory || "Audio",
+          subid: boatSubId || undefined,
+          subid2: boatSubId2 || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setBoatProductResult(data.data);
+        setNotice({
+          text: `🎉 Product created successfully! Slug: /product/${data.data.product.slug}`,
+          type: "success",
+        });
+      } else {
+        setBoatProductError(data.error || "Failed to ingest BoAt product");
+      }
+    } catch (err: any) {
+      setBoatProductError(err.message || "Network error");
+    } finally {
+      setCreatingBoatProduct(false);
+    }
+  };
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -497,6 +550,277 @@ export default function CuelinksAdminDashboard() {
             </div>
             <div className="text-[10px] text-slate-500 mt-1">Server authenticated</div>
           </div>
+        </div>
+
+        {/* SECTION: BOAT REAL AFFILIATE MERCHANT INTEGRATION */}
+        <div className="rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-md space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-black uppercase tracking-wider bg-slate-900 text-white px-2.5 py-0.5 rounded-full">
+                  Verified Merchant #1
+                </span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  Monetizable ✅
+                </span>
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                BoAt Lifestyle Affiliate Integration
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                First end-to-end monetizable publisher campaign. Fully verified via Cuelinks V3 provider.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2">
+                <span className="text-slate-400 block text-[10px] font-semibold uppercase">Merchant</span>
+                <span className="font-bold text-slate-900 text-sm">BoAt</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2">
+                <span className="text-slate-400 block text-[10px] font-semibold uppercase">Campaign ID</span>
+                <span className="font-bold font-mono text-slate-900 text-sm">4232</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2">
+                <span className="text-slate-400 block text-[10px] font-semibold uppercase">Domain</span>
+                <span className="font-mono text-slate-900 font-semibold">boat-lifestyle.com</span>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2">
+                <span className="text-emerald-700 block text-[10px] font-semibold uppercase">Status</span>
+                <span className="font-bold text-emerald-800 flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Monetizable ✅
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Add BoAt Product Form */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span>Add BoAt Product</span>
+                <span className="text-xs font-normal text-slate-500">(Automatic Link Conversion & Storage)</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setBoatUrl("https://www.boat-lifestyle.com/products/airdopes-141");
+                  setBoatSlug("boat-airdopes-141");
+                  setBoatTitle("BoAt Airdopes 141 True Wireless Earbuds");
+                  setBoatPrice("1499");
+                  setBoatCategory("Audio");
+                  setBoatSubId("boat-airdopes-141");
+                  setBoatSubId2("smartpick_product_page");
+                }}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Reset to Airdopes 141 Test Data
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 text-xs">
+              <div className="md:col-span-8">
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Product URL <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  value={boatUrl}
+                  onChange={(e) => setBoatUrl(e.target.value)}
+                  placeholder="https://www.boat-lifestyle.com/products/..."
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="md:col-span-4">
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Product Slug <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={boatSlug}
+                  onChange={(e) => setBoatSlug(e.target.value)}
+                  placeholder="boat-airdopes-141"
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="md:col-span-6">
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Product Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={boatTitle}
+                  onChange={(e) => setBoatTitle(e.target.value)}
+                  placeholder="BoAt Airdopes 141..."
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="md:col-span-3">
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Verified Price (₹ INR, Optional)
+                </label>
+                <input
+                  type="number"
+                  value={boatPrice}
+                  onChange={(e) => setBoatPrice(e.target.value)}
+                  placeholder="1499"
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="md:col-span-3">
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Category
+                </label>
+                <input
+                  type="text"
+                  value={boatCategory}
+                  onChange={(e) => setBoatCategory(e.target.value)}
+                  placeholder="Audio"
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="md:col-span-12">
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Image URL (Optional — leave blank for clean category placeholder)
+                </label>
+                <input
+                  type="url"
+                  value={boatImageUrl}
+                  onChange={(e) => setBoatImageUrl(e.target.value)}
+                  placeholder="https://cdn.shopify.com/... or verified image asset"
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="md:col-span-12">
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Factual Product Description
+                </label>
+                <textarea
+                  rows={2}
+                  value={boatDescription}
+                  onChange={(e) => setBoatDescription(e.target.value)}
+                  placeholder="Concise, verified description without fabricated specs..."
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="md:col-span-6">
+                <label className="font-semibold text-slate-700 block mb-1">
+                  SubID (Slug/Tracking identifier)
+                </label>
+                <input
+                  type="text"
+                  value={boatSubId}
+                  onChange={(e) => setBoatSubId(e.target.value)}
+                  placeholder="boat-airdopes-141"
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="md:col-span-6">
+                <label className="font-semibold text-slate-700 block mb-1">
+                  SubID2 (Source/Placement identifier)
+                </label>
+                <input
+                  type="text"
+                  value={boatSubId2}
+                  onChange={(e) => setBoatSubId2(e.target.value)}
+                  placeholder="smartpick_product_page"
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-2">
+              <Button
+                onClick={handleCreateBoatProduct}
+                disabled={creatingBoatProduct || !boatUrl || !boatSlug || !boatTitle}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-6 py-2.5 shadow-sm gap-2"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${creatingBoatProduct ? "animate-spin" : ""}`} />
+                <span>{creatingBoatProduct ? "Validating & Ingesting via Cuelinks..." : "Create Affiliate Product"}</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Product Error Banner */}
+          {boatProductError && (
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-900 text-xs flex items-start gap-2.5">
+              <XCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold">Product Ingestion Blocked</div>
+                <div className="mt-0.5">{boatProductError}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Product Success Result Banner */}
+          {boatProductResult && (
+            <div className="p-5 rounded-xl border border-emerald-300 bg-emerald-50/50 space-y-4 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 bg-emerald-600 text-white font-black px-2.5 py-1 rounded-md text-xs shadow-sm">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    PRODUCT STORED IN SUPABASE
+                  </span>
+                  <span className="font-bold text-slate-900 text-sm">
+                    {boatProductResult.product.name}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/product/${boatProductResult.product.slug}`}
+                    target="_blank"
+                    className="inline-flex items-center gap-1 font-bold text-xs bg-white border border-slate-300 hover:border-slate-400 text-slate-800 px-3 py-1 rounded-lg transition"
+                  >
+                    <span>View Product Page</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                  <a
+                    href={`/api/redirect?product=${boatProductResult.product.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-bold text-xs bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1 rounded-lg transition"
+                  >
+                    <span>Test Redirect Link</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
+                  <div className="text-slate-500 font-semibold text-[11px]">Affiliation Status</div>
+                  <div className="font-bold text-emerald-700 flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    affiliated === true (Monetizable ✅)
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
+                  <div className="text-slate-500 font-semibold text-[11px]">Campaign ID</div>
+                  <div className="font-bold font-mono text-slate-900">
+                    {boatProductResult.affiliateLink.campaign_id} (BoAt)
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
+                  <div className="text-slate-500 font-semibold text-[11px]">Short Affiliate URL</div>
+                  <div className="font-mono text-blue-700 font-bold truncate">
+                    {boatProductResult.affiliateLink.short_url || boatProductResult.affiliateLink.tracking_url}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* BATCH TEST REPORT SECTION */}

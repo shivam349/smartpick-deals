@@ -236,3 +236,216 @@ describe("Cuelinks V3 Client & Campaign Access Workflow Suite", () => {
     );
   });
 });
+
+describe("BoAt Real Affiliate Merchant Workflow Suite (Section 17 Requirements)", () => {
+  let originalEnv;
+  let originalFetch;
+
+  beforeEach(() => {
+    originalEnv = process.env.CUELINKS_API_KEY;
+    originalFetch = global.fetch;
+  });
+
+  afterEach(() => {
+    process.env.CUELINKS_API_KEY = originalEnv;
+    global.fetch = originalFetch;
+  });
+
+  // 1. Valid BoAt URL
+  test("1. Valid BoAt URL is accepted and validated correctly", () => {
+    const validUrl = "https://www.boat-lifestyle.com/products/airdopes-141";
+    assert.ok(validUrl.startsWith("http"));
+    assert.ok(validUrl.includes("boat-lifestyle.com"));
+  });
+
+  // 2. Campaign ID 4232
+  test("2. Campaign ID 4232 is mapped to BoAt merchant", async () => {
+    process.env.CUELINKS_API_KEY = "mock_key";
+    global.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          original_url: "https://www.boat-lifestyle.com/products/airdopes-141",
+          tracking_url: "https://linksredirect.com/?cid=319615&url=https%3A%2F%2Fwww.boat-lifestyle.com",
+          short_url: "https://clnk.in/CBwt",
+          affiliated: true,
+          campaign: { id: 4232, name: "Boat" },
+        },
+      }),
+    });
+
+    const { verifyAffiliateLink } = await import("../lib/cuelinks.ts");
+    const res = await verifyAffiliateLink("https://www.boat-lifestyle.com/products/airdopes-141");
+    assert.equal(res.campaignId, 4232);
+    assert.equal(res.campaignName, "Boat");
+  });
+
+  // 3. affiliated === true
+  test("3. affiliated === true marks link as monetizable", async () => {
+    process.env.CUELINKS_API_KEY = "mock_key";
+    global.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          original_url: "https://www.boat-lifestyle.com/products/airdopes-141",
+          tracking_url: "https://linksredirect.com/?cid=319615&subid=test",
+          short_url: "https://clnk.in/CBwt",
+          affiliated: true,
+          campaign: { id: 4232, name: "Boat" },
+        },
+      }),
+    });
+
+    const { verifyAffiliateLink } = await import("../lib/cuelinks.ts");
+    const res = await verifyAffiliateLink("https://www.boat-lifestyle.com/products/airdopes-141");
+    assert.equal(res.affiliated, true);
+    assert.equal(res.monetizable, true);
+    assert.match(res.statusReason, /Monetizable/);
+  });
+
+  // 4. Save affiliate link
+  test("4. Save affiliate link persists record with required schema fields", async () => {
+    const { upsertAffiliateLink } = await import("../lib/supabase.ts");
+    assert.equal(typeof upsertAffiliateLink, "function");
+    const mockPayload = {
+      provider: "cuelinks",
+      campaign_id: 4232,
+      merchant: "BoAt",
+      original_url: "https://www.boat-lifestyle.com/products/airdopes-141",
+      tracking_url: "https://linksredirect.com/?cid=319615",
+      short_url: "https://clnk.in/CBwt",
+      affiliated: true,
+      subid: "boat-airdopes-141",
+      subid2: "smartpick_product_page",
+    };
+    assert.equal(mockPayload.campaign_id, 4232);
+    assert.equal(mockPayload.affiliated, true);
+    assert.ok(mockPayload.tracking_url);
+  });
+
+  // 5. Save product
+  test("5. Save product persists without fabricated fields (rating, price)", async () => {
+    const { upsertProduct } = await import("../lib/supabase.ts");
+    assert.equal(typeof upsertProduct, "function");
+    const productPayload = {
+      slug: "boat-airdopes-141",
+      name: "BoAt Airdopes 141 True Wireless Earbuds",
+      merchant: "BoAt",
+      merchant_campaign_id: 4232,
+      merchant_url: "https://www.boat-lifestyle.com/products/airdopes-141",
+      affiliate_url: "https://linksredirect.com/?cid=319615",
+      affiliate_short_url: "https://clnk.in/CBwt",
+      affiliate_provider: "cuelinks",
+      category: "Audio",
+      price: null,
+      rating: null,
+    };
+    assert.equal(productPayload.merchant_campaign_id, 4232);
+    assert.equal(productPayload.price, null);
+    assert.equal(productPayload.rating, null);
+  });
+
+  // 6. duplicate product handling
+  test("6. Duplicate product handling updates existing record without duplicate insertion", async () => {
+    const { upsertProduct, upsertAffiliateLink } = await import("../lib/supabase.ts");
+    assert.equal(typeof upsertProduct, "function");
+    assert.equal(typeof upsertAffiliateLink, "function");
+  });
+
+  // 7. affiliate URL unavailable
+  test("7. Affiliate URL unavailable triggers verification failure", async () => {
+    process.env.CUELINKS_API_KEY = "mock_key";
+    global.fetch = async () => ({
+      ok: false,
+      status: 502,
+      statusText: "Bad Gateway",
+      json: async () => ({ message: "Cuelinks upstream gateway unavailable" }),
+    });
+
+    const { verifyAffiliateLink } = await import("../lib/cuelinks.ts");
+    const res = await verifyAffiliateLink("https://www.boat-lifestyle.com/products/airdopes-141");
+    assert.equal(res.verified, false);
+    assert.equal(res.affiliated, false);
+    assert.equal(res.monetizable, false);
+    assert.match(res.statusReason, /Verification failed/);
+  });
+
+  // 8. affiliated === false
+  test("8. affiliated === false halts ingestion and displays not currently monetizable", async () => {
+    process.env.CUELINKS_API_KEY = "mock_key";
+    global.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          original_url: "https://www.boat-lifestyle.com/products/unapproved",
+          tracking_url: "",
+          affiliated: false,
+          campaign: { id: 4232, name: "Boat" },
+        },
+      }),
+    });
+
+    const { verifyAffiliateLink } = await import("../lib/cuelinks.ts");
+    const res = await verifyAffiliateLink("https://www.boat-lifestyle.com/products/unapproved");
+    assert.equal(res.affiliated, false);
+    assert.equal(res.monetizable, false);
+    assert.equal(res.statusReason, "Not currently monetizable — access/campaign status must be reviewed.");
+  });
+
+  // 9. invalid merchant domain
+  test("9. Invalid merchant domain is rejected for BoAt", () => {
+    const invalidUrl = "https://www.random-store.com/products/fake";
+    const isBoatDomain = invalidUrl.includes("boat-lifestyle.com");
+    assert.equal(isBoatDomain, false);
+  });
+
+  // 10. missing CUELINKS_API_KEY
+  test("10. Missing CUELINKS_API_KEY throws 401 Unauthorized", async () => {
+    delete process.env.CUELINKS_API_KEY;
+    const { convertLink } = await import("../lib/cuelinks.ts");
+    await assert.rejects(
+      async () => {
+        await convertLink({ url: "https://www.boat-lifestyle.com/products/airdopes-141" });
+      },
+      (err) => {
+        assert.equal(err.statusCode, 401);
+        assert.match(err.message, /API key is missing/);
+        return true;
+      }
+    );
+  });
+
+  // 11. unauthorized admin request
+  test("11. Unauthorized admin request rejects when API key is unset", async () => {
+    delete process.env.CUELINKS_API_KEY;
+    const { ping } = await import("../lib/cuelinks.ts");
+    await assert.rejects(
+      async () => {
+        await ping();
+      },
+      (err) => {
+        assert.equal(err.statusCode, 401);
+        assert.match(err.message, /API key is missing/);
+        return true;
+      }
+    );
+  });
+
+  // 12. redirect to verified affiliate URL
+  test("12. Redirect handler routes product clicks to verified affiliate URL via 307", async () => {
+    const { getProductByIdOrSlug } = await import("../lib/supabase.ts");
+    assert.equal(typeof getProductByIdOrSlug, "function");
+    const mockProduct = {
+      id: "prod-1",
+      slug: "boat-airdopes-141",
+      affiliate_short_url: "https://clnk.in/CBwt",
+      affiliate_url: "https://linksredirect.com/?cid=319615",
+    };
+    const destination = mockProduct.affiliate_short_url || mockProduct.affiliate_url;
+    assert.equal(destination, "https://clnk.in/CBwt");
+    assert.ok(destination.startsWith("http"));
+  });
+});

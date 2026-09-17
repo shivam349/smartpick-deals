@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { Product, Research, Category, Article, AutomationLog } from "./types";
+import type { Product, Research, Category, Article, AutomationLog } from "./types.ts";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "https://mlsbumavmkbdislnhwvb.supabase.co";
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "placeholder-anon-key-for-test-and-build";
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -313,5 +313,159 @@ export async function getAccessRequests(limit = 50): Promise<any[]> {
     return [];
   }
 }
+
+// Ingestion and product lookup helpers
+export async function getProductByIdOrSlug(
+  identifier: string
+): Promise<Product | null> {
+  try {
+    // Check by slug first
+    let { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("slug", identifier)
+      .maybeSingle();
+
+    // If not found and identifier resembles UUID, check by id
+    if (!data && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier)) {
+      const res = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", identifier)
+        .maybeSingle();
+      data = res.data;
+      error = res.error;
+    }
+
+    if (error || !data) return null;
+    return data as Product;
+  } catch (err) {
+    console.error("Error finding product by id/slug:", err);
+    return null;
+  }
+}
+
+export async function upsertProduct(productData: Partial<Product>): Promise<Product | null> {
+  try {
+    if (!productData.slug && !productData.name) {
+      throw new Error("slug or name is required to upsert product");
+    }
+
+    // Check for existing product by slug
+    const existing = productData.slug
+      ? await getProductByIdOrSlug(productData.slug)
+      : null;
+
+    const row = {
+      name: productData.name,
+      slug: productData.slug,
+      merchant: productData.merchant || "BoAt",
+      merchant_campaign_id: productData.merchant_campaign_id ?? null,
+      merchant_url: productData.merchant_url || productData.source_url || null,
+      source_url: productData.source_url || productData.merchant_url || "",
+      affiliate_url: productData.affiliate_url || "",
+      affiliate_short_url: productData.affiliate_short_url || null,
+      affiliate_provider: productData.affiliate_provider || "cuelinks",
+      category: productData.category || "Audio & Electronics",
+      description: productData.description || "",
+      image_url: productData.image_url || "",
+      price: productData.price || null,
+      currency: productData.currency || "INR",
+      availability: productData.availability || "in_stock",
+      rating: productData.rating ?? null,
+      review_count: productData.review_count ?? null,
+      score: productData.score ?? null,
+      status: productData.status || "active",
+      published: productData.published ?? true,
+      last_verified_at: productData.last_verified_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existing?.id) {
+      const { data, error } = await supabase
+        .from("products")
+        .update(row)
+        .eq("id", existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Product;
+    } else {
+      const { data, error } = await supabase
+        .from("products")
+        .insert([row])
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Product;
+    }
+  } catch (err) {
+    console.error("Error upserting product in Supabase:", err);
+    return null;
+  }
+}
+
+export async function upsertAffiliateLink(linkData: {
+  provider?: string;
+  campaign_id: number;
+  merchant?: string;
+  original_url: string;
+  tracking_url: string;
+  short_url?: string;
+  affiliated: boolean;
+  channel_id?: string;
+  subid?: string;
+  subid2?: string;
+  subid3?: string;
+}): Promise<boolean> {
+  try {
+    const provider = linkData.provider || "cuelinks";
+    const campaignId = linkData.campaign_id;
+    const originalUrl = linkData.original_url;
+
+    // Check if an existing link record exists
+    const { data: existing } = await supabase
+      .from("affiliate_links")
+      .select("id")
+      .eq("provider", provider)
+      .eq("campaign_id", campaignId)
+      .eq("original_url", originalUrl)
+      .maybeSingle();
+
+    const payload = {
+      provider,
+      campaign_id: campaignId,
+      merchant: linkData.merchant || "BoAt",
+      original_url: originalUrl,
+      tracking_url: linkData.tracking_url,
+      short_url: linkData.short_url || null,
+      affiliated: Boolean(linkData.affiliated),
+      channel_id: linkData.channel_id || null,
+      subid: linkData.subid || null,
+      subid2: linkData.subid2 || null,
+      subid3: linkData.subid3 || null,
+      last_verified_at: new Date().toISOString(),
+    };
+
+    if (existing?.id) {
+      const { error } = await supabase
+        .from("affiliate_links")
+        .update(payload)
+        .eq("id", existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("affiliate_links")
+        .insert([{ ...payload, created_at: new Date().toISOString() }]);
+      if (error) throw error;
+    }
+
+    return true;
+  } catch (err) {
+    console.error("Error upserting affiliate link in Supabase:", err);
+    return false;
+  }
+}
+
 
 

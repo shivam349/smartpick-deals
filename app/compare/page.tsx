@@ -56,7 +56,7 @@ export default async function CompareIndexPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {pairs.map((pair, idx) => {
-          const winner = pair.prodA.score >= pair.prodB.score ? pair.prodA : pair.prodB;
+          const winner = (pair.prodA.score ?? 0) >= (pair.prodB.score ?? 0) ? pair.prodA : pair.prodB;
 
           return (
             <div

@@ -1,20 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getProductByIdOrSlug, recordAffiliateLink } from "@/lib/supabase";
 import { cuelinksProvider } from "@/lib/affiliate/cuelinks-provider";
-import { recordAffiliateLink } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Outbound Affiliate Redirection & Monetization Handler
  *
- * Validates external destination URLs, performs server-side conversion via
- * Cuelinks V3 when available, records conversion metrics to Supabase,
- * and securely redirects the visitor to the monetized destination.
+ * Supports:
+ * 1. GET /api/redirect?product=<id-or-slug>
+ *    Loads verified product from database, retrieves pre-stored Cuelinks affiliate
+ *    URL, and securely redirects the user without regenerating links on every click.
+ *
+ * 2. GET /api/redirect?url=<merchant-url>
+ *    Dynamic redirection with protocol validation and telemetry logging.
  */
 export async function GET(request: NextRequest) {
   try {
+    const productId = request.nextUrl.searchParams.get("product");
     const targetUrl = request.nextUrl.searchParams.get("url");
 
+    // Case 1: Product-based redirection (Section 9)
+    if (productId) {
+      const product = await getProductByIdOrSlug(productId);
+      if (product) {
+        // Use verified affiliate short URL or full tracking URL
+        const redirectDestination =
+          product.affiliate_short_url ||
+          product.affiliate_url ||
+          product.merchant_url ||
+          product.source_url;
+
+        if (redirectDestination && redirectDestination.startsWith("http")) {
+          return NextResponse.redirect(redirectDestination, {
+            status: 307,
+            headers: {
+              "Referrer-Policy": "no-referrer-when-downgrade",
+              "Cache-Control": "no-store, max-age=0",
+            },
+          });
+        }
+      }
+    }
+
+    // Case 2: URL-based direct redirection
     if (!targetUrl) {
       return NextResponse.redirect(new URL("/", request.url));
     }
@@ -39,7 +68,7 @@ export async function GET(request: NextRequest) {
 
     let destinationUrl = decodedUrl;
 
-    // Check if Cuelinks API key is configured
+    // Optional dynamic conversion if API key configured
     if (process.env.CUELINKS_API_KEY) {
       try {
         const conversion = await cuelinksProvider.convertLink({
@@ -54,7 +83,6 @@ export async function GET(request: NextRequest) {
           destinationUrl = conversion.shortUrl || conversion.trackingUrl;
         }
 
-        // Record telemetry to Supabase
         recordAffiliateLink({
           provider: "cuelinks",
           campaign_id: conversion.campaignId,
@@ -67,12 +95,10 @@ export async function GET(request: NextRequest) {
           subid3,
         }).catch(() => {});
       } catch (err) {
-        // Fallback silently to direct URL if conversion fails
         console.warn("Cuelinks dynamic conversion fallback:", err);
       }
     }
 
-    // Return temporary redirect to destination storefront
     return NextResponse.redirect(destinationUrl, {
       status: 307,
       headers: {

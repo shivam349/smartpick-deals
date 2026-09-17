@@ -79,7 +79,7 @@ export default async function ComparePage({ params }: { params: { slug: string }
   const resA = dataA.research;
   const resB = dataB.research;
 
-  const winner = prodA.score >= prodB.score ? prodA : prodB;
+  const winner = (prodA.score ?? 0) >= (prodB.score ?? 0) ? prodA : prodB;
   const runnerUp = winner.id === prodA.id ? prodB : prodA;
   const winnerRes = winner.id === prodA.id ? resA : resB;
 
@@ -199,12 +199,12 @@ export default async function ComparePage({ params }: { params: { slug: string }
                 <td className="p-4 font-semibold text-slate-500">Editorial Score</td>
                 <td className="p-4">
                   <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200/80">
-                    {Math.round(prodA.score)}/100
+                    {prodA.score != null ? `${Math.round(prodA.score)}/100` : "N/A"}
                   </span>
                 </td>
                 <td className="p-4">
                   <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200/80">
-                    {Math.round(prodB.score)}/100
+                    {prodB.score != null ? `${Math.round(prodB.score)}/100` : "N/A"}
                   </span>
                 </td>
               </tr>

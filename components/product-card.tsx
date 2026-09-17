@@ -26,10 +26,12 @@ export function ProductCard({ product, rank }: ProductCardProps) {
             </span>
           )}
 
-          <div className="flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
-            <span>Score:</span>
-            <span className="text-indigo-600">{Math.round(product.score)}</span>
-          </div>
+          {typeof product.score === "number" && (
+            <div className="flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+              <span>Score:</span>
+              <span className="text-indigo-600">{Math.round(product.score)}</span>
+            </div>
+          )}
         </div>
 
         {/* Product Image via ProductImage */}
