@@ -24,6 +24,7 @@ import {
   Lock,
   Star,
   Globe,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -176,6 +177,71 @@ export default function CuelinksAdminDashboard() {
 
   // Notifications
   const [notice, setNotice] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
+
+  // Diagnostic Test State
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagResult, setDiagResult] = useState<{
+    keyDetected: boolean;
+    apiReachable: boolean;
+    publisherText?: string;
+    error?: string;
+  } | null>(null);
+
+  const handleTestCuelinksApi = async () => {
+    setDiagLoading(true);
+    setDiagResult(null);
+    try {
+      // 1. Safe server-side environment check
+      const configRes = await fetch("/api/admin/cuelinks/config-status");
+      const configData = await configRes.json();
+
+      if (!configData.configured) {
+        setDiagResult({
+          keyDetected: false,
+          apiReachable: false,
+          error: "Cuelinks API key is missing or not configured. Set CUELINKS_API_KEY in server environment.",
+        });
+        return;
+      }
+
+      // 2. Safe server-side ping test
+      const pingRes = await fetch("/api/admin/cuelinks/ping");
+      const pingData = await pingRes.json();
+
+      if (pingRes.ok && pingData.connected) {
+        const pubId = pingData.publisher?.id;
+        const pubName = pingData.publisher?.name;
+        const publisherText =
+          pubId && pubName
+            ? `Publisher: ${pubName} (ID: ${pubId})`
+            : pubName
+            ? `Publisher: ${pubName}`
+            : pubId
+            ? `Publisher ID: ${pubId}`
+            : undefined;
+
+        setDiagResult({
+          keyDetected: true,
+          apiReachable: true,
+          publisherText,
+        });
+      } else {
+        setDiagResult({
+          keyDetected: true,
+          apiReachable: false,
+          error: pingData.error || "Failed to communicate with Cuelinks API",
+        });
+      }
+    } catch (err: any) {
+      setDiagResult({
+        keyDetected: false,
+        apiReachable: false,
+        error: err.message || "Failed to communicate with Cuelinks API",
+      });
+    } finally {
+      setDiagLoading(false);
+    }
+  };
 
   const handleCreateBoatProduct = async () => {
     setCreatingBoatProduct(true);
@@ -430,6 +496,17 @@ export default function CuelinksAdminDashboard() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Button
+              onClick={handleTestCuelinksApi}
+              disabled={diagLoading}
+              variant="default"
+              size="sm"
+              className="text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+            >
+              <Activity className={`h-3.5 w-3.5 ${diagLoading ? "animate-spin" : ""}`} />
+              <span>{diagLoading ? "Testing Cuelinks API..." : "Test Cuelinks API"}</span>
+            </Button>
+
+            <Button
               onClick={fetchHealth}
               disabled={healthLoading}
               variant="outline"
@@ -452,6 +529,47 @@ export default function CuelinksAdminDashboard() {
             </Button>
           </div>
         </div>
+
+        {/* Cuelinks API Diagnostic Result */}
+        {diagResult && (
+          <div
+            className={`p-4 rounded-xl border text-xs sm:text-sm font-medium space-y-2 ${
+              diagResult.apiReachable
+                ? "bg-emerald-50/90 border-emerald-300 text-emerald-950"
+                : "bg-red-50/90 border-red-300 text-red-950"
+            }`}
+          >
+            <div className="flex items-center justify-between font-bold text-xs uppercase tracking-wider">
+              <span>Cuelinks API Diagnostic Output</span>
+              <button
+                onClick={() => setDiagResult(null)}
+                className="text-xs lowercase underline font-normal hover:opacity-80"
+              >
+                dismiss
+              </button>
+            </div>
+            {diagResult.keyDetected && (
+              <div className="flex items-center gap-2 font-semibold text-emerald-800">
+                <span>✅ API key detected</span>
+              </div>
+            )}
+            {diagResult.apiReachable && (
+              <div className="flex items-center gap-2 font-semibold text-emerald-800">
+                <span>✅ Cuelinks API reachable</span>
+              </div>
+            )}
+            {diagResult.publisherText && (
+              <div className="text-xs text-slate-700 pl-6 font-mono">
+                {diagResult.publisherText}
+              </div>
+            )}
+            {diagResult.error && (
+              <div className="flex items-center gap-2 font-semibold text-red-800">
+                <span>❌ {diagResult.error}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Global Notice Banner */}
         {notice && (

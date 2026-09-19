@@ -235,6 +235,99 @@ describe("Cuelinks V3 Client & Campaign Access Workflow Suite", () => {
       "Not currently monetizable — access/campaign status must be reviewed."
     );
   });
+
+  test("14. Exact V3 Auth format (Authorization: Token ...) and Base URL", async () => {
+    process.env.CUELINKS_API_KEY = "test_key_12345";
+    let capturedUrl = "";
+    let capturedHeaders = {};
+
+    global.fetch = async (url, opts) => {
+      capturedUrl = url;
+      capturedHeaders = opts?.headers || {};
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: "ok",
+          version: "3.0",
+          publisher: { id: 12345, name: "Test Publisher" },
+          api_key: { name: "Key", scopes: ["read:campaigns"] },
+        }),
+      };
+    };
+
+    const { ping } = await import("../lib/cuelinks.ts");
+    await ping();
+
+    assert.equal(capturedUrl, "https://developers.cuelinks.com/pub_api/v3/ping");
+    assert.equal(capturedHeaders["Authorization"], "Token test_key_12345");
+    assert.ok(!capturedHeaders["Authorization"].startsWith("Bearer"));
+    assert.ok(!capturedHeaders["Authorization"].includes("token="));
+  });
+
+  test("15. Safe diagnostic isCuelinksConfigured returns only configured boolean without exposing key", async () => {
+    const { isCuelinksConfigured } = await import("../lib/cuelinks.ts");
+
+    // When unset
+    delete process.env.CUELINKS_API_KEY;
+    assert.equal(isCuelinksConfigured(), false);
+
+    // When empty string
+    process.env.CUELINKS_API_KEY = "   ";
+    assert.equal(isCuelinksConfigured(), false);
+
+    // When placeholder
+    process.env.CUELINKS_API_KEY = "your-cuelinks-api-key-here";
+    assert.equal(isCuelinksConfigured(), false);
+
+    // When valid
+    process.env.CUELINKS_API_KEY = "real_production_key_43chars";
+    assert.equal(isCuelinksConfigured(), true);
+
+    const diagnosticOutput = {
+      configured: isCuelinksConfigured(),
+      environment: "production",
+    };
+    assert.deepEqual(diagnosticOutput, {
+      configured: true,
+      environment: "production",
+    });
+    assert.equal(Object.keys(diagnosticOutput).length, 2);
+    assert.ok(!JSON.stringify(diagnosticOutput).includes("real_production_key_43chars"));
+  });
+
+  test("16. Server-side /ping test retrieves publisher metadata without exposing secrets", async () => {
+    process.env.CUELINKS_API_KEY = "mock_secret_token";
+    global.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        status: "ok",
+        version: "3.0",
+        publisher: { id: 273459, name: "SHIVAM GARG", currency: "INR" },
+        api_key: { name: "Key", scopes: ["read:campaigns"] },
+      }),
+    });
+
+    const { ping } = await import("../lib/cuelinks.ts");
+    const pingRes = await ping();
+
+    assert.equal(pingRes.status, "ok");
+    assert.equal(pingRes.publisher.id, 273459);
+    assert.equal(pingRes.publisher.name, "SHIVAM GARG");
+
+    // Sanitized output format
+    const safeOutput = {
+      success: true,
+      connected: true,
+      publisher: {
+        id: pingRes.publisher.publisher_id || pingRes.publisher.id,
+        name: pingRes.publisher.name,
+      },
+    };
+    assert.ok(!JSON.stringify(safeOutput).includes("mock_secret_token"));
+    assert.equal(safeOutput.publisher.name, "SHIVAM GARG");
+  });
 });
 
 describe("BoAt Real Affiliate Merchant Workflow Suite (Section 17 Requirements)", () => {

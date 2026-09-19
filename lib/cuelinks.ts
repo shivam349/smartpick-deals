@@ -242,6 +242,19 @@ export function getCampaignAccessLabel(accessStatus: string, cooldownDate?: stri
 }
 
 /**
+ * Safe server-side check to confirm if CUELINKS_API_KEY is configured
+ * Returns boolean only. NEVER returns the key.
+ */
+export function isCuelinksConfigured(): boolean {
+  const key = process.env.CUELINKS_API_KEY;
+  return Boolean(
+    key &&
+    key.trim() !== "" &&
+    key !== "your-cuelinks-api-key-here"
+  );
+}
+
+/**
  * Retrieve the Cuelinks API key safely from environment
  */
 function getApiKey(): string {
